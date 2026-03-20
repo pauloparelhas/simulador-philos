@@ -236,6 +236,14 @@ const THEME = {
   surface:    "#ffffff",
   surfaceAlt: "#f8fafc",
   surfaceHover:"#f1f5f9",
+  // Paleta da tabela de proposta (mesmo azul, escalonamento gradual)
+  tblHeader:  "#1e3a5f",   // cabeçalho e total — navy escuro
+  tblClasse:  "#2d4f73",   // linha de classe — navy médio
+  tblGroup:   "#d6e2ed",   // linha de grupo — azul claro
+  tblSubgroup:"#edf2f7",   // linha de subgrupo — quase branco
+  tblAsset:   "#ffffff",   // linha de ativo — branco
+  tblTextLight:"#ffffff",  // texto sobre fundo escuro
+  tblTextDark: "#1e293b",  // texto sobre fundo claro
   // Data da base
   baseDate:   "Dez/25",
 };
@@ -2693,8 +2701,7 @@ ${s3}
       }
     }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
       style: {
-        borderBottom: "2px solid #1e3a5f",
-        backgroundColor: "#1e3a5f"
+        backgroundColor: THEME.tblHeader
       }
     }, /*#__PURE__*/React.createElement("th", {
       style: {
@@ -2702,15 +2709,15 @@ ${s3}
         padding: "10px 8px",
         fontSize: 12,
         fontWeight: 700,
-        color: "#fff"
+        color: THEME.tblTextLight
       }
-    }, "Grupo"), /*#__PURE__*/React.createElement("th", {
+    }, "Grupo"), proposalDetailLevel !== 5 && proposalDetailLevel !== 1 && proposalDetailLevel !== 2 && /*#__PURE__*/React.createElement("th", {
       style: {
         textAlign: "left",
         padding: "10px 8px",
         fontSize: 12,
         fontWeight: 700,
-        color: "#fff"
+        color: THEME.tblTextLight
       }
     }, "Subgrupo"), /*#__PURE__*/React.createElement("th", {
       style: {
@@ -2718,7 +2725,7 @@ ${s3}
         padding: "10px 8px",
         fontSize: 12,
         fontWeight: 700,
-        color: "#fff"
+        color: THEME.tblTextLight
       }
     }, "Ativo"), /*#__PURE__*/React.createElement("th", {
       style: {
@@ -2726,7 +2733,7 @@ ${s3}
         padding: "10px 8px",
         fontSize: 12,
         fontWeight: 700,
-        color: "#fff"
+        color: THEME.tblTextLight
       }
     }, "%"), /*#__PURE__*/React.createElement("th", {
       style: {
@@ -2734,7 +2741,7 @@ ${s3}
         padding: "10px 8px",
         fontSize: 12,
         fontWeight: 700,
-        color: "#fff"
+        color: THEME.tblTextLight
       }
     }, "R$"))), /*#__PURE__*/React.createElement("tbody", null, proposalDetailLevel === 5 ?
     // LEVEL 5: Sugestão do Editor — Classe → Grupo → Ativos (sem subgrupos)
@@ -2754,8 +2761,8 @@ ${s3}
         return [/*#__PURE__*/React.createElement("tr", {
           key: `class-${classe}`,
           style: {
-            backgroundColor: CLASS_COLORS[classe] || "#1e3a5f",
-            color: "#fff",
+            backgroundColor: THEME.tblClasse,
+            color: THEME.tblTextLight,
             fontWeight: 700,
             fontSize: 13
           }
@@ -2764,10 +2771,6 @@ ${s3}
             padding: "10px 8px"
           }
         }, classe), /*#__PURE__*/React.createElement("td", {
-          style: {
-            padding: "10px 8px"
-          }
-        }), /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "10px 8px"
           }
@@ -2789,11 +2792,10 @@ ${s3}
           const groupTotal = calculateGroupTotal(groupId, alloc);
           if (groupTotal <= 0.001) return [];
           const groupValue = totalAmount * groupTotal / 100;
-          const groupColor = GROUPS[groupId].cor + "22";
           return [/*#__PURE__*/React.createElement("tr", {
             key: `group-${groupId}`,
             style: {
-              backgroundColor: groupColor,
+              backgroundColor: THEME.tblGroup,
               fontWeight: 600,
               fontSize: 12
             }
@@ -2801,22 +2803,9 @@ ${s3}
             style: {
               padding: "8px 8px",
               paddingLeft: 16,
-              color: "#1e293b"
+              color: THEME.tblTextDark
             }
-          }, /*#__PURE__*/React.createElement("span", {
-            style: {
-              display: "inline-block",
-              width: 12,
-              height: 12,
-              borderRadius: "50%",
-              backgroundColor: GROUPS[groupId].cor,
-              marginRight: 6
-            }
-          }), GROUPS[groupId].nome), /*#__PURE__*/React.createElement("td", {
-            style: {
-              padding: "8px 8px"
-            }
-          }), /*#__PURE__*/React.createElement("td", {
+          }, GROUPS[groupId].nome), /*#__PURE__*/React.createElement("td", {
             style: {
               padding: "8px 8px"
             }
@@ -2824,13 +2813,13 @@ ${s3}
             style: {
               padding: "8px 8px",
               textAlign: "right",
-              color: "#1e293b"
+              color: THEME.tblTextDark
             }
           }, groupTotal.toFixed(2), "%"), /*#__PURE__*/React.createElement("td", {
             style: {
               padding: "8px 8px",
               textAlign: "right",
-              color: "#1e293b"
+              color: THEME.tblTextDark
             }
           }, groupValue.toLocaleString("pt-BR", {
             style: "currency",
@@ -2840,8 +2829,8 @@ ${s3}
             return /*#__PURE__*/React.createElement("tr", {
               key: asset.key,
               style: {
-                borderBottom: "1px solid #f1f5f9",
-                backgroundColor: "#fff",
+                borderBottom: "1px solid " + THEME.borderLight,
+                backgroundColor: THEME.tblAsset,
                 fontSize: 11
               }
             }, /*#__PURE__*/React.createElement("td", {
@@ -2851,24 +2840,20 @@ ${s3}
               }
             }), /*#__PURE__*/React.createElement("td", {
               style: {
-                padding: "6px 8px"
-              }
-            }), /*#__PURE__*/React.createElement("td", {
-              style: {
                 padding: "6px 8px",
-                color: "#1e293b"
+                color: THEME.tblTextDark
               }
             }, asset.nome), /*#__PURE__*/React.createElement("td", {
               style: {
                 padding: "6px 8px",
                 textAlign: "right",
-                color: "#1e293b"
+                color: THEME.tblTextDark
               }
             }, asset.pct.toFixed(2), "%"), /*#__PURE__*/React.createElement("td", {
               style: {
                 padding: "6px 8px",
                 textAlign: "right",
-                color: "#1e293b"
+                color: THEME.tblTextDark
               }
             }, assetValue.toLocaleString("pt-BR", {
               style: "currency",
@@ -2895,8 +2880,8 @@ ${s3}
         return [/*#__PURE__*/React.createElement("tr", {
           key: `class-${classe}`,
           style: {
-            backgroundColor: CLASS_COLORS[classe] || "#1e3a5f",
-            color: "#fff",
+            backgroundColor: THEME.tblClasse,
+            color: THEME.tblTextLight,
             fontWeight: 700,
             fontSize: 13
           }
@@ -2905,10 +2890,6 @@ ${s3}
             padding: "10px 8px"
           }
         }, classe), /*#__PURE__*/React.createElement("td", {
-          style: {
-            padding: "10px 8px"
-          }
-        }), /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "10px 8px"
           }
@@ -2933,33 +2914,19 @@ ${s3}
       const groupTotal = calculateGroupTotal(groupId, alloc);
       if (groupTotal <= 0.001) return null;
       const groupValue = totalAmount * groupTotal / 100;
-      const groupColor = GROUPS[groupId].cor + "15";
       return /*#__PURE__*/React.createElement("tr", {
         key: groupId,
         style: {
-          backgroundColor: groupColor,
+          backgroundColor: THEME.tblGroup,
           fontWeight: 600
         }
       }, /*#__PURE__*/React.createElement("td", {
         style: {
           padding: "10px 8px",
           fontSize: 12,
-          color: "#1e293b"
+          color: THEME.tblTextDark
         }
-      }, /*#__PURE__*/React.createElement("span", {
-        style: {
-          display: "inline-block",
-          width: 12,
-          height: 12,
-          borderRadius: "50%",
-          backgroundColor: GROUPS[groupId].cor,
-          marginRight: 6
-        }
-      }), GROUPS[groupId].nome), /*#__PURE__*/React.createElement("td", {
-        style: {
-          padding: "10px 8px"
-        }
-      }), /*#__PURE__*/React.createElement("td", {
+      }, GROUPS[groupId].nome), /*#__PURE__*/React.createElement("td", {
         style: {
           padding: "10px 8px"
         }
@@ -2968,27 +2935,26 @@ ${s3}
           padding: "10px 8px",
           fontSize: 12,
           textAlign: "right",
-          color: "#1e293b"
+          color: THEME.tblTextDark
         }
       }, groupTotal.toFixed(2), "%"), /*#__PURE__*/React.createElement("td", {
         style: {
           padding: "10px 8px",
           fontSize: 12,
           textAlign: "right",
-          color: "#1e293b"
+          color: THEME.tblTextDark
         }
       }, groupValue.toLocaleString("pt-BR", {
         style: "currency",
         currency: "BRL"
       })));
     }) : proposalDetailLevel === 3 ?
-    // LEVEL 3: Groups + Subgroups + Assets
+    // LEVEL 3: Groups + Subgroups (subtotals)
     Object.keys(alloc).map(groupId => {
       const groupData = alloc[groupId];
       const groupTotal = calculateGroupTotal(groupId, alloc);
       if (groupTotal <= 0.001) return null;
       const groupValue = totalAmount * groupTotal / 100;
-      const groupColor = GROUPS[groupId].cor + "15";
       const subgroupMap = {};
       groupData.assets.forEach(asset => {
         const sgId = asset.subgrupo;
@@ -3005,25 +2971,16 @@ ${s3}
           key: `${groupId}-${sgName}`
         }, sgIdx === 0 && /*#__PURE__*/React.createElement("tr", {
           style: {
-            backgroundColor: groupColor,
+            backgroundColor: THEME.tblGroup,
             fontWeight: 600
           }
         }, /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "10px 8px",
             fontSize: 12,
-            color: "#1e293b"
+            color: THEME.tblTextDark
           }
-        }, /*#__PURE__*/React.createElement("span", {
-          style: {
-            display: "inline-block",
-            width: 12,
-            height: 12,
-            borderRadius: "50%",
-            backgroundColor: GROUPS[groupId].cor,
-            marginRight: 6
-          }
-        }), GROUPS[groupId].nome), /*#__PURE__*/React.createElement("td", {
+        }, GROUPS[groupId].nome), /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "10px 8px"
           }
@@ -3036,53 +2993,52 @@ ${s3}
             padding: "10px 8px",
             fontSize: 12,
             textAlign: "right",
-            color: "#1e293b"
+            color: THEME.tblTextDark
           }
         }, groupTotal.toFixed(2), "%"), /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "10px 8px",
             fontSize: 12,
             textAlign: "right",
-            color: "#1e293b"
+            color: THEME.tblTextDark
           }
         }, groupValue.toLocaleString("pt-BR", {
           style: "currency",
           currency: "BRL"
         }))), /*#__PURE__*/React.createElement("tr", {
           style: {
-            backgroundColor: "#f5f5f5",
+            backgroundColor: THEME.tblSubgroup,
             fontStyle: "italic",
             fontSize: 12
           }
         }, /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "8px 8px",
-            paddingLeft: 16,
-            color: "#64748b"
+            paddingLeft: 16
           }
         }), /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "8px 8px",
-            color: "#475569"
+            color: THEME.textMid
           }
         }, sgName), /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "8px 8px",
-            color: "#64748b",
+            color: THEME.textLight,
             fontSize: 11
           }
         }, assets.length, " ativo", assets.length !== 1 ? "s" : ""), /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "8px 8px",
             textAlign: "right",
-            color: "#475569",
+            color: THEME.textMid,
             fontWeight: 500
           }
         }, sgPct.toFixed(2), "%"), /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "8px 8px",
             textAlign: "right",
-            color: "#475569",
+            color: THEME.textMid,
             fontWeight: 500
           }
         }, sgValue.toLocaleString("pt-BR", {
@@ -3108,8 +3064,8 @@ ${s3}
         return [/*#__PURE__*/React.createElement("tr", {
           key: `class-${classe}`,
           style: {
-            backgroundColor: CLASS_COLORS[classe] || "#1e3a5f",
-            color: "#fff",
+            backgroundColor: THEME.tblClasse,
+            color: THEME.tblTextLight,
             fontWeight: 700,
             fontSize: 13
           }
@@ -3143,7 +3099,6 @@ ${s3}
           const groupTotal = calculateGroupTotal(groupId, alloc);
           if (groupTotal <= 0.001) return [];
           const groupValue = totalAmount * groupTotal / 100;
-          const groupColor = GROUPS[groupId].cor + "22";
           const subgroupMap = {};
           groupData.assets.forEach(asset => {
             const sgId = asset.subgrupo;
@@ -3154,7 +3109,7 @@ ${s3}
           return [/*#__PURE__*/React.createElement("tr", {
             key: `group-${groupId}`,
             style: {
-              backgroundColor: groupColor,
+              backgroundColor: THEME.tblGroup,
               fontWeight: 600,
               fontSize: 12
             }
@@ -3162,18 +3117,9 @@ ${s3}
             style: {
               padding: "8px 8px",
               paddingLeft: 16,
-              color: "#1e293b"
+              color: THEME.tblTextDark
             }
-          }, /*#__PURE__*/React.createElement("span", {
-            style: {
-              display: "inline-block",
-              width: 12,
-              height: 12,
-              borderRadius: "50%",
-              backgroundColor: GROUPS[groupId].cor,
-              marginRight: 6
-            }
-          }), GROUPS[groupId].nome), /*#__PURE__*/React.createElement("td", {
+          }, GROUPS[groupId].nome), /*#__PURE__*/React.createElement("td", {
             style: {
               padding: "8px 8px"
             }
@@ -3185,13 +3131,13 @@ ${s3}
             style: {
               padding: "8px 8px",
               textAlign: "right",
-              color: "#1e293b"
+              color: THEME.tblTextDark
             }
           }, groupTotal.toFixed(2), "%"), /*#__PURE__*/React.createElement("td", {
             style: {
               padding: "8px 8px",
               textAlign: "right",
-              color: "#1e293b"
+              color: THEME.tblTextDark
             }
           }, groupValue.toLocaleString("pt-BR", {
             style: "currency",
@@ -3202,20 +3148,19 @@ ${s3}
             return [/*#__PURE__*/React.createElement("tr", {
               key: `sg-${groupId}-${sgName}`,
               style: {
-                backgroundColor: "#f5f5f5",
+                backgroundColor: THEME.tblSubgroup,
                 fontStyle: "italic",
                 fontSize: 11
               }
             }, /*#__PURE__*/React.createElement("td", {
               style: {
                 padding: "6px 8px",
-                paddingLeft: 32,
-                color: "#64748b"
+                paddingLeft: 32
               }
             }), /*#__PURE__*/React.createElement("td", {
               style: {
                 padding: "6px 8px",
-                color: "#64748b"
+                color: THEME.textLight
               }
             }, sgName), /*#__PURE__*/React.createElement("td", {
               style: {
@@ -3225,13 +3170,13 @@ ${s3}
               style: {
                 padding: "6px 8px",
                 textAlign: "right",
-                color: "#64748b"
+                color: THEME.textLight
               }
             }, sgPct.toFixed(2), "%"), /*#__PURE__*/React.createElement("td", {
               style: {
                 padding: "6px 8px",
                 textAlign: "right",
-                color: "#64748b"
+                color: THEME.textLight
               }
             }, sgValue.toLocaleString("pt-BR", {
               style: "currency",
@@ -3241,8 +3186,8 @@ ${s3}
               return /*#__PURE__*/React.createElement("tr", {
                 key: asset.key,
                 style: {
-                  borderBottom: "1px solid #f1f5f9",
-                  backgroundColor: "#fff",
+                  borderBottom: "1px solid " + THEME.borderLight,
+                  backgroundColor: THEME.tblAsset,
                   fontSize: 11
                 }
               }, /*#__PURE__*/React.createElement("td", {
@@ -3257,19 +3202,19 @@ ${s3}
               }), /*#__PURE__*/React.createElement("td", {
                 style: {
                   padding: "6px 8px",
-                  color: "#1e293b"
+                  color: THEME.tblTextDark
                 }
               }, asset.nome), /*#__PURE__*/React.createElement("td", {
                 style: {
                   padding: "6px 8px",
                   textAlign: "right",
-                  color: "#1e293b"
+                  color: THEME.tblTextDark
                 }
               }, asset.pct.toFixed(2), "%"), /*#__PURE__*/React.createElement("td", {
                 style: {
                   padding: "6px 8px",
                   textAlign: "right",
-                  color: "#1e293b"
+                  color: THEME.tblTextDark
                 }
               }, assetValue.toLocaleString("pt-BR", {
                 style: "currency",
@@ -3281,12 +3226,12 @@ ${s3}
       });
     })(), /*#__PURE__*/React.createElement("tr", {
       style: {
-        backgroundColor: "#1e3a5f",
-        color: "#fff",
+        backgroundColor: THEME.tblHeader,
+        color: THEME.tblTextLight,
         fontWeight: 700
       }
     }, /*#__PURE__*/React.createElement("td", {
-      colSpan: "3",
+      colSpan: [5, 1, 2].includes(proposalDetailLevel) ? 2 : 3,
       style: {
         padding: "10px 8px",
         fontSize: 13
