@@ -44,6 +44,7 @@ const PROFILES = {
       rv_local: 0,
       rv_global: 5,
       alternativos: 1,
+      previdencia: 0,
     },
   },
   moderado: {
@@ -58,6 +59,7 @@ const PROFILES = {
       rv_local: 2,
       rv_global: 10,
       alternativos: 2,
+      previdencia: 0,
     },
   },
   agressivo: {
@@ -72,6 +74,7 @@ const PROFILES = {
       rv_local: 4,
       rv_global: 15,
       alternativos: 3,
+      previdencia: 0,
     },
   },
 };
@@ -85,6 +88,7 @@ const GROUPS = {
   rv_local:        { nome: "Renda Variável",          cor: "#059669", classe: "Renda Variável" },
   rv_global:       { nome: "Renda Variável Global",   cor: "#dc2626", classe: "Renda Variável" },
   alternativos:    { nome: "Alternativos",            cor: "#db2777", classe: "Alternativos" },
+  previdencia:     { nome: "Previdência",             cor: "#ea580c", classe: "Previdência" },
 };
 
 const SUBGROUPS = {
@@ -207,6 +211,7 @@ const THEME = {
     "Multimercado":    "#2563eb",
     "Renda Variável":  "#0d9488",
     "Alternativos":    "#7c3aed",
+    "Previdência":     "#ea580c",
   },
   // Header e totais
   headerBg:   "#1e3a5f",
@@ -250,6 +255,57 @@ const THEME = {
 
 // Atalho para uso direto no código
 const CLASS_COLORS = THEME.classe;
+
+  </script>
+  <script>
+// ========================================================================
+// DADOS-PREV — Base de fundos previdenciários (PGBL/VGBL)
+// Fonte: Top Philos Dez/25
+// Para atualizar: edite apenas este arquivo
+// ========================================================================
+
+const PREV_SUBGROUPS = [
+  { id: "prev_cred_hg",   nome: "Crédito High Grade" },
+  { id: "prev_cred_hy",   nome: "Crédito High Yield / FIDC" },
+  { id: "prev_inflacao",  nome: "Inflação / IMA-B" },
+  { id: "prev_multi",     nome: "Multimercado" },
+  { id: "prev_rv_lb",     nome: "Renda Variável — Long Biased" },
+  { id: "prev_rv_lo70",   nome: "Renda Variável — Long Only Ponderado" },
+  { id: "prev_rv_lo100",  nome: "Renda Variável — Long Only 100" },
+  { id: "prev_rv_int",    nome: "Renda Variável — Internacional" },
+];
+
+const PREV_ASSETS = [
+  // === CRÉDITO HIGH GRADE ===
+  { nome: "ACS ARX DENALI PREVIDÊNCIA FIC RF CP",      subgrupo: "prev_cred_hg",   tipo: "Ambos", aplicMin: 200, benchmark: "CDI",   cotLiq: "D+4",  rating: null, qualificado: false, emAvaliacao: false },
+  { nome: "SPX SEAHAWK PREV FIC FIM CP",               subgrupo: "prev_cred_hg",   tipo: "Ambos", aplicMin: 200, benchmark: "CDI",   cotLiq: "D+9",  rating: null, qualificado: false, emAvaliacao: false },
+  { nome: "ACCESS BTG CRED CORP II PREV FIC FIM CP",   subgrupo: "prev_cred_hg",   tipo: "Ambos", aplicMin: 200, benchmark: "CDI",   cotLiq: "D+7",  rating: null, qualificado: false, emAvaliacao: false },
+  { nome: "IBIUNA PREV FIC FIM CP",                    subgrupo: "prev_cred_hg",   tipo: "Ambos", aplicMin: 200, benchmark: "CDI",   cotLiq: "D+31", rating: null, qualificado: false, emAvaliacao: false },
+  // === CRÉDITO HIGH YIELD / FIDC ===
+  { nome: "SOLIS ANTARES BTG PREV FIC FIRF CP",        subgrupo: "prev_cred_hy",   tipo: "Ambos", aplicMin: 200, benchmark: "CDI",   cotLiq: "D+22", rating: null, qualificado: false, emAvaliacao: false },
+  // === INFLAÇÃO / IMA-B ===
+  { nome: "BTG CRED CORP IPCA PREV FIRF CP",           subgrupo: "prev_inflacao",  tipo: "Ambos", aplicMin: 200, benchmark: "IMA-B", cotLiq: "D+7",  rating: null, qualificado: false, emAvaliacao: false },
+  { nome: "BTG IMA-B PREV FIC FIRF",                   subgrupo: "prev_inflacao",  tipo: "Ambos", aplicMin: 200, benchmark: "IMA-B", cotLiq: "D+2",  rating: null, qualificado: false, emAvaliacao: false },
+  // === MULTIMERCADO ===
+  { nome: "IBIUNA ST PREV FIC FIM",                    subgrupo: "prev_multi",     tipo: "Ambos", aplicMin: 200, benchmark: "CDI",   cotLiq: "D+31", rating: null, qualificado: false, emAvaliacao: false },
+  { nome: "ABSOLUTE VERTEX PREV FIM ACCESS",           subgrupo: "prev_multi",     tipo: "Ambos", aplicMin: 200, benchmark: "CDI",   cotLiq: "D+22", rating: null, qualificado: false, emAvaliacao: false },
+  { nome: "GENOA CAPITAL CRUISE BTG PREV FIC FIM",     subgrupo: "prev_multi",     tipo: "Ambos", aplicMin: 200, benchmark: "CDI",   cotLiq: "D+7",  rating: null, qualificado: false, emAvaliacao: false },
+  { nome: "KAPITALO KAPPA SELECTION FC FI MULT",       subgrupo: "prev_multi",     tipo: "Ambos", aplicMin: 200, benchmark: "CDI",   cotLiq: "D+24", rating: null, qualificado: false, emAvaliacao: false },
+  { nome: "KAPITALO K10 GLOBAL BTG PREV FIC FIM",      subgrupo: "prev_multi",     tipo: "Ambos", aplicMin: 200, benchmark: "CDI",   cotLiq: "D+9",  rating: null, qualificado: false, emAvaliacao: false },
+  // === RV — LONG BIASED / TOTAL RETURN ===
+  { nome: "SPX LB BTG PREV FIC FIM",                   subgrupo: "prev_rv_lb",     tipo: "Ambos", aplicMin: 200, benchmark: "CDI",   cotLiq: "D+32", rating: null, qualificado: false, emAvaliacao: false },
+  { nome: "DAHLIA TOTAL RETURN BTG PREV FIC FIM",      subgrupo: "prev_rv_lb",     tipo: "Ambos", aplicMin: 200, benchmark: "CDI",   cotLiq: "D+9",  rating: null, qualificado: false, emAvaliacao: false },
+  // === RV — LONG ONLY PONDERADO (70%) ===
+  { nome: "REAL INVESTOR 70 PREV FI MULTIMERCADO",     subgrupo: "prev_rv_lo70",   tipo: "Ambos", aplicMin: 200, benchmark: "CDI",   cotLiq: "D+9",  rating: null, qualificado: false, emAvaliacao: false },
+  { nome: "DAHLIA TOTAL RETURN 70 BTG PREV FIC FIM",   subgrupo: "prev_rv_lo70",   tipo: "Ambos", aplicMin: 200, benchmark: "CDI",   cotLiq: "D+9",  rating: null, qualificado: false, emAvaliacao: false },
+  // === RV — LONG ONLY 100% ===
+  { nome: "REAL INVESTOR ICATU PREV IQ FIC FIM",       subgrupo: "prev_rv_lo100",  tipo: "Ambos", aplicMin: 100, benchmark: "CDI",   cotLiq: "D+22", rating: null, qualificado: false, emAvaliacao: false },
+  { nome: "GUEPARDO 100 ICATU PREV IQ FIE FIC FIM",    subgrupo: "prev_rv_lo100",  tipo: "Ambos", aplicMin: 100, benchmark: "-",     cotLiq: "D+23", rating: null, qualificado: false, emAvaliacao: false },
+  // === RV — INTERNACIONAL ===
+  { nome: "DAHLIA GLOBAL 50 PREV FIC FIM",             subgrupo: "prev_rv_int",    tipo: "Ambos", aplicMin: 200, benchmark: "CDI",   cotLiq: "D+9",  rating: null, qualificado: false, emAvaliacao: false },
+  { nome: "BTG CRED CORP OAK3 GLOBAL PREV FIE FIM",    subgrupo: "prev_rv_int",    tipo: "Ambos", aplicMin: 200, benchmark: "-",     cotLiq: "D+12", rating: null, qualificado: false, emAvaliacao: false },
+  { nome: "BTG REFERENCE S&P 500 USD PREV FIM",        subgrupo: "prev_rv_int",    tipo: "Ambos", aplicMin: 200, benchmark: "CDI",   cotLiq: "D+3",  rating: null, qualificado: false, emAvaliacao: false },
+];
 
   </script>
 
@@ -298,6 +354,39 @@ function WizardCarteiraPhilos() {
   const [flatView, setFlatView] = React.useState({});
   const [proposalDetailLevel, setProposalDetailLevel] = React.useState(5);
   const [isQualified, setIsQualified] = React.useState(false);
+
+  // ======================================================================
+  // HELPERS: previdência como grupo especial
+  // ======================================================================
+
+  const getAssetsForGroup = groupId => groupId === "previdencia" ? typeof PREV_ASSETS !== "undefined" ? PREV_ASSETS : [] : ASSETS.filter(a => a.grupo === groupId);
+  const getSubgroupsForGroup = groupId => groupId === "previdencia" ? typeof PREV_SUBGROUPS !== "undefined" ? PREV_SUBGROUPS : [] : SUBGROUPS[groupId] || [];
+  const findAssetByName = nome => ASSETS.find(a => a.nome === nome) || (typeof PREV_ASSETS !== "undefined" ? PREV_ASSETS.find(a => a.nome === nome) : undefined);
+
+  // Ripple-back: quando alocação de ativos prev muda, atualiza customGroups["previdencia"]
+  React.useEffect(() => {
+    if (currentStep < 3) return;
+    if (!Object.prototype.hasOwnProperty.call(customGroups, "previdencia")) return;
+    const prevKeys = Object.keys(assetAllocations).filter(k => k.startsWith("previdencia|"));
+    if (prevKeys.length === 0) return;
+    const prevTotal = Math.round(prevKeys.reduce((s, k) => s + (assetAllocations[k] || 0), 0) * 100) / 100;
+    const currentPrevPct = Math.round((customGroups["previdencia"] || 0) * 100) / 100;
+    if (Math.abs(prevTotal - currentPrevPct) < 0.05) return;
+    const diff = prevTotal - currentPrevPct;
+    const others = Object.keys(customGroups).filter(gid => gid !== "previdencia" && !fixedGroups[gid] && customGroups[gid] > 0);
+    const othersTotal = others.reduce((s, gid) => s + customGroups[gid], 0);
+    const newGroups = {
+      ...customGroups,
+      previdencia: prevTotal
+    };
+    if (othersTotal > 0) {
+      const factor = (othersTotal - diff) / othersTotal;
+      others.forEach(gid => {
+        newGroups[gid] = Math.max(0, customGroups[gid] * factor);
+      });
+    }
+    setCustomGroups(newGroups);
+  }, [assetAllocations, currentStep]);
 
   // ======================================================================
   // HELPER COMPONENTS: HelpTip
@@ -961,7 +1050,7 @@ function WizardCarteiraPhilos() {
         ...prev,
         [key]: newCount
       }));
-      const assetsInSubgroup = ASSETS.filter(a => a.grupo === groupId && a.subgrupo === subgroupId);
+      const assetsInSubgroup = getAssetsForGroup(groupId).filter(a => a.subgrupo === subgroupId);
       if (newCount === assetsInSubgroup.length) {
         const newSelected = {
           ...selectedAssets
@@ -976,7 +1065,7 @@ function WizardCarteiraPhilos() {
       const isFlatMode = flatView[groupId];
       if (isFlatMode) {
         const flatCountKey = `${groupId}|__flat__`;
-        const allGroupAssets = ASSETS.filter(a => a.grupo === groupId);
+        const allGroupAssets = getAssetsForGroup(groupId);
         const flatCount = assetCounts[flatCountKey] !== undefined ? assetCounts[flatCountKey] : 1;
         let filled = 0;
         for (let i = 0; i < flatCount; i++) {
@@ -990,7 +1079,7 @@ function WizardCarteiraPhilos() {
       } else {
         let total = 0;
         let filled = 0;
-        (SUBGROUPS[groupId] || []).forEach(sg => {
+        getSubgroupsForGroup(groupId).forEach(sg => {
           const key = `${groupId}|${sg.id}`;
           const cnt = assetCounts[key] !== undefined ? assetCounts[key] : 1;
           for (let i = 0; i < cnt; i++) {
@@ -1006,7 +1095,7 @@ function WizardCarteiraPhilos() {
     };
     const suggestAssetsForGroup = groupId => {
       const isFlatMode = flatView[groupId];
-      let available = ASSETS.filter(a => a.grupo === groupId);
+      let available = getAssetsForGroup(groupId);
       available = available.filter(a => !a.qualificado || isQualified);
       if (available.length === 0) return;
       const newSelected = {
@@ -1014,7 +1103,7 @@ function WizardCarteiraPhilos() {
       };
       if (isFlatMode) {
         const flatCountKey = `${groupId}|__flat__`;
-        const allGroupAssets = ASSETS.filter(a => a.grupo === groupId);
+        const allGroupAssets = getAssetsForGroup(groupId);
         const flatCount = assetCounts[flatCountKey] !== undefined ? assetCounts[flatCountKey] : 1;
 
         // Collect already selected names in this group to avoid duplicates
@@ -1042,7 +1131,7 @@ function WizardCarteiraPhilos() {
           }
         }
       } else {
-        (SUBGROUPS[groupId] || []).forEach(sg => {
+        getSubgroupsForGroup(groupId).forEach(sg => {
           const key = `${groupId}|${sg.id}`;
           const cnt = assetCounts[key] !== undefined ? assetCounts[key] : 1;
           const sgAssets = available.filter(a => a.subgrupo === sg.id);
@@ -1069,7 +1158,7 @@ function WizardCarteiraPhilos() {
       };
       activeGroupIds.forEach(groupId => {
         const isFlatMode = flatView[groupId];
-        let available = ASSETS.filter(a => a.grupo === groupId);
+        let available = getAssetsForGroup(groupId);
         available = available.filter(a => !a.qualificado || isQualified);
         if (available.length === 0) return;
         if (isFlatMode) {
@@ -1097,7 +1186,7 @@ function WizardCarteiraPhilos() {
             }
           }
         } else {
-          (SUBGROUPS[groupId] || []).forEach(sg => {
+          getSubgroupsForGroup(groupId).forEach(sg => {
             const key = `${groupId}|${sg.id}`;
             const cnt = assetCounts[key] !== undefined ? assetCounts[key] : 1;
             const sgAssets = available.filter(a => a.subgrupo === sg.id);
@@ -1165,8 +1254,8 @@ function WizardCarteiraPhilos() {
       const groupAlloc = customGroups[groupId];
       const groupInfo = GROUPS[groupId];
       const isCollapsed = collapsedGroups[groupId];
-      const subgroupIds = SUBGROUPS[groupId] || [];
-      const subgroupsWithAssets = subgroupIds.filter(sg => ASSETS.some(a => a.grupo === groupId && a.subgrupo === sg.id));
+      const subgroupIds = getSubgroupsForGroup(groupId);
+      const subgroupsWithAssets = subgroupIds.filter(sg => getAssetsForGroup(groupId).some(a => a.subgrupo === sg.id));
       const customGroupSubgroups = Object.values(customSubgroups).filter(sg => sg.grupo === groupId);
       const allSubgroups = [...subgroupsWithAssets, ...customGroupSubgroups];
       const {
@@ -1311,7 +1400,7 @@ function WizardCarteiraPhilos() {
       }, flatView[groupId] ?
       // FLAT VIEW: All assets from all subgroups
       (() => {
-        const allGroupAssets = ASSETS.filter(a => a.grupo === groupId);
+        const allGroupAssets = getAssetsForGroup(groupId);
         const flatCountKey = `${groupId}|__flat__`;
         const flatCount = assetCounts[flatCountKey] !== undefined ? assetCounts[flatCountKey] : 1;
         return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
@@ -1428,7 +1517,7 @@ function WizardCarteiraPhilos() {
           }, "-- Selecione --"), allGroupAssets.map(asset => /*#__PURE__*/React.createElement("option", {
             key: asset.nome,
             value: asset.nome
-          }, asset.nome, " ", "∙", " ", SUBGROUPS[groupId]?.find(sg => sg.id === asset.subgrupo)?.nome || asset.subgrupo)), /*#__PURE__*/React.createElement("option", {
+          }, asset.nome, " ", "∙", " ", getSubgroupsForGroup(groupId)?.find(sg => sg.id === asset.subgrupo)?.nome || asset.subgrupo)), /*#__PURE__*/React.createElement("option", {
             value: "__outro__"
           }, "(Outro - digitar nome)")), selectedName === "__outro__" && /*#__PURE__*/React.createElement("input", {
             key: slotKey + "-custom-input",
@@ -1500,7 +1589,7 @@ function WizardCarteiraPhilos() {
       })() :
       // GROUPED VIEW: Organized by subgroups (original)
       allSubgroups.map(subgroup => {
-        const assetsInSubgroup = ASSETS.filter(a => a.grupo === groupId && a.subgrupo === subgroup.id);
+        const assetsInSubgroup = getAssetsForGroup(groupId).filter(a => a.subgrupo === subgroup.id);
         const key = `${groupId}|${subgroup.id}`;
         const currentCount = assetCounts[key] !== undefined ? assetCounts[key] : 1;
         return /*#__PURE__*/React.createElement("div", {
@@ -1819,7 +1908,7 @@ function WizardCarteiraPhilos() {
                 key: `${groupId}|${customName}`
               });
             } else {
-              const asset = ASSETS.find(a => a.nome === selectedName);
+              const asset = findAssetByName(selectedName);
               if (asset) {
                 collected.push({
                   nome: asset.nome,
@@ -1831,8 +1920,7 @@ function WizardCarteiraPhilos() {
           }
         }
       } else {
-        SUBGROUPS[groupId]?.forEach(subgroup => {
-          const assetsAvail = ASSETS.filter(a => a.grupo === groupId && a.subgrupo === subgroup.id);
+        getSubgroupsForGroup(groupId).forEach(subgroup => {
           const count = assetCounts[`${groupId}|${subgroup.id}`] !== undefined ? assetCounts[`${groupId}|${subgroup.id}`] : 1;
           for (let slotIdx = 0; slotIdx < count; slotIdx++) {
             const slotKey = `${groupId}|${subgroup.id}|${slotIdx}`;
@@ -1846,7 +1934,7 @@ function WizardCarteiraPhilos() {
                   key: `${groupId}|${customName}`
                 });
               } else {
-                const asset = ASSETS.find(a => a.nome === selectedName);
+                const asset = findAssetByName(selectedName);
                 if (asset) {
                   collected.push({
                     nome: asset.nome,
@@ -1863,6 +1951,7 @@ function WizardCarteiraPhilos() {
       const initialPct = customGroups[groupId] / totalAssets;
       const assetsWithAllocation = collected.map(a => ({
         ...a,
+        isPrev: groupId === "previdencia",
         pct: assetAllocations[a.key] !== undefined ? assetAllocations[a.key] : initialPct
       }));
       const filteredAssets = assetsWithAllocation.filter(a => a.pct > 0.001);
@@ -2024,10 +2113,10 @@ function WizardCarteiraPhilos() {
         key: groupId,
         style: {
           marginBottom: 24,
-          border: `1px solid ${GROUPS[groupId].cor}`,
+          border: groupId === "previdencia" ? `2px dashed #ea580c` : `1px solid ${GROUPS[groupId].cor}`,
           borderRadius: 8,
           padding: 16,
-          backgroundColor: "#fff"
+          backgroundColor: groupId === "previdencia" ? "#fff8f5" : "#fff"
         }
       }, /*#__PURE__*/React.createElement("div", {
         style: {
@@ -2139,13 +2228,24 @@ function WizardCarteiraPhilos() {
             fontSize: 12,
             color: "#1e293b"
           }
-        }, asset.nome), /*#__PURE__*/React.createElement("td", {
+        }, asset.nome, asset.isPrev && /*#__PURE__*/React.createElement("span", {
+          style: {
+            marginLeft: 6,
+            fontSize: 9,
+            padding: "1px 5px",
+            color: "#ea580c",
+            border: "1px dashed #ea580c",
+            borderRadius: 3,
+            fontWeight: 700,
+            letterSpacing: 0.3
+          }
+        }, "PREV")), /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "8px 8px",
             fontSize: 11,
             color: "#64748b"
           }
-        }, SUBGROUPS[groupId]?.find(sg => sg.id === asset.subgrupo)?.nome || asset.subgrupo), /*#__PURE__*/React.createElement("td", {
+        }, getSubgroupsForGroup(groupId)?.find(sg => sg.id === asset.subgrupo)?.nome || asset.subgrupo), /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "8px 8px",
             fontSize: 12,
@@ -2183,7 +2283,7 @@ function WizardCarteiraPhilos() {
           style: "currency",
           currency: "BRL"
         }), (() => {
-          const assetInfo = ASSETS.find(a => a.nome === asset.nome);
+          const assetInfo = findAssetByName(asset.nome);
           if (assetInfo && assetInfo.aplicMin && assetValue > 0 && assetValue < assetInfo.aplicMin) {
             return /*#__PURE__*/React.createElement("div", {
               style: {
@@ -2746,7 +2846,7 @@ ${s3}
     }, "R$"))), /*#__PURE__*/React.createElement("tbody", null, proposalDetailLevel === 5 ?
     // LEVEL 5: Sugestão do Editor — Classe → Grupo → Ativos (sem subgrupos)
     (() => {
-      const classeOrder = ["Renda Fixa", "Multimercado", "Renda Variável", "Alternativos"];
+      const classeOrder = ["Renda Fixa", "Multimercado", "Renda Variável", "Alternativos", "Previdência"];
       const groupsByClasse = {};
       Object.keys(alloc).forEach(gid => {
         const classe = GROUPS[gid].classe;
@@ -2831,7 +2931,8 @@ ${s3}
               style: {
                 borderBottom: "1px solid " + THEME.borderLight,
                 backgroundColor: THEME.tblAsset,
-                fontSize: 11
+                fontSize: 11,
+                borderLeft: asset.isPrev ? "3px dashed #ea580c" : "none"
               }
             }, /*#__PURE__*/React.createElement("td", {
               style: {
@@ -2843,7 +2944,17 @@ ${s3}
                 padding: "6px 8px",
                 color: THEME.tblTextDark
               }
-            }, asset.nome), /*#__PURE__*/React.createElement("td", {
+            }, asset.nome, asset.isPrev && /*#__PURE__*/React.createElement("span", {
+              style: {
+                marginLeft: 5,
+                fontSize: 9,
+                padding: "1px 4px",
+                color: "#ea580c",
+                border: "1px dashed #ea580c",
+                borderRadius: 3,
+                fontWeight: 700
+              }
+            }, "PREV")), /*#__PURE__*/React.createElement("td", {
               style: {
                 padding: "6px 8px",
                 textAlign: "right",
@@ -2865,7 +2976,7 @@ ${s3}
     })() : proposalDetailLevel === 1 ?
     // LEVEL 1: Classes only
     (() => {
-      const classeOrder = ["Renda Fixa", "Multimercado", "Renda Variável", "Alternativos"];
+      const classeOrder = ["Renda Fixa", "Multimercado", "Renda Variável", "Alternativos", "Previdência"];
       const groupsByClasse = {};
       Object.keys(alloc).forEach(gid => {
         const classe = GROUPS[gid].classe;
@@ -3049,7 +3160,7 @@ ${s3}
     }) :
     // LEVEL 4: Full hierarchy (Classes -> Groups -> Subgroups -> Assets)
     (() => {
-      const classeOrder = ["Renda Fixa", "Multimercado", "Renda Variável", "Alternativos"];
+      const classeOrder = ["Renda Fixa", "Multimercado", "Renda Variável", "Alternativos", "Previdência"];
       const groupsByClasse = {};
       Object.keys(alloc).forEach(gid => {
         const classe = GROUPS[gid].classe;
@@ -3188,7 +3299,8 @@ ${s3}
                 style: {
                   borderBottom: "1px solid " + THEME.borderLight,
                   backgroundColor: THEME.tblAsset,
-                  fontSize: 11
+                  fontSize: 11,
+                  borderLeft: asset.isPrev ? "3px dashed #ea580c" : "none"
                 }
               }, /*#__PURE__*/React.createElement("td", {
                 style: {
@@ -3204,7 +3316,17 @@ ${s3}
                   padding: "6px 8px",
                   color: THEME.tblTextDark
                 }
-              }, asset.nome), /*#__PURE__*/React.createElement("td", {
+              }, asset.nome, asset.isPrev && /*#__PURE__*/React.createElement("span", {
+                style: {
+                  marginLeft: 5,
+                  fontSize: 9,
+                  padding: "1px 4px",
+                  color: "#ea580c",
+                  border: "1px dashed #ea580c",
+                  borderRadius: 3,
+                  fontWeight: 700
+                }
+              }, "PREV")), /*#__PURE__*/React.createElement("td", {
                 style: {
                   padding: "6px 8px",
                   textAlign: "right",
