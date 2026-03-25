@@ -354,6 +354,28 @@ function WizardCarteiraPhilos() {
   const [flatView, setFlatView] = React.useState({});
   const [proposalDetailLevel, setProposalDetailLevel] = React.useState(5);
   const [isQualified, setIsQualified] = React.useState(false);
+  const [allocInputMode, setAllocInputMode] = React.useState("pct"); // "pct" | "brl"
+  const [brlStep, setBrlStep] = React.useState(5000);
+
+  // Helpers para modo R$
+  const brlStepLabel = step => step >= 1000 ? `${(step / 1000).toFixed(0)}k` : String(step);
+  const adjustGroupByDelta = (groupId, deltaPct) => {
+    const newVal = Math.max(0, customGroups[groupId] + deltaPct);
+    const actualDelta = newVal - customGroups[groupId];
+    const updated = {
+      ...customGroups,
+      [groupId]: newVal
+    };
+    const nonFixed = Object.keys(updated).filter(g => g !== groupId && !fixedGroups[g]);
+    if (nonFixed.length > 0) {
+      const nonFixedSum = nonFixed.reduce((s, g) => s + updated[g], 0);
+      nonFixed.forEach(g => {
+        const proportion = nonFixedSum > 0 ? updated[g] / nonFixedSum : 1 / nonFixed.length;
+        updated[g] = Math.max(0, updated[g] - actualDelta * proportion);
+      });
+    }
+    setCustomGroups(updated);
+  };
 
   // ======================================================================
   // HELPERS: previdência como grupo especial
@@ -435,6 +457,91 @@ function WizardCarteiraPhilos() {
         boxShadow: "0 4px 12px rgba(0,0,0,0.2)"
       }
     }, text));
+  };
+
+  // ======================================================================
+  // ALLOC MODE TOGGLE — reutilizável nos Steps 1 e 3
+  // ======================================================================
+
+  const AllocModeToggle = () => {
+    const [localStep, setLocalStep] = React.useState(brlStep);
+    const isRl = allocInputMode === "brl";
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "7px 14px",
+        backgroundColor: "#f8fafc",
+        borderRadius: 8,
+        border: "1px solid #e2e8f0",
+        fontSize: 12,
+        flexWrap: "wrap"
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 600,
+        color: "#475569"
+      }
+    }, "Ajustar por:"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        borderRadius: 6,
+        overflow: "hidden",
+        border: "1px solid #cbd5e1"
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => setAllocInputMode("pct"),
+      style: {
+        padding: "4px 14px",
+        border: "none",
+        cursor: "pointer",
+        fontWeight: 700,
+        fontSize: 11,
+        backgroundColor: !isRl ? THEME.primary : "#fff",
+        color: !isRl ? "#fff" : "#64748b"
+      }
+    }, "%"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setAllocInputMode("brl"),
+      style: {
+        padding: "4px 14px",
+        border: "none",
+        cursor: "pointer",
+        fontWeight: 700,
+        fontSize: 11,
+        backgroundColor: isRl ? THEME.primary : "#fff",
+        color: isRl ? "#fff" : "#64748b"
+      }
+    }, "R$")), isRl ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#64748b"
+      }
+    }, "Passo R$:"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      value: localStep,
+      step: "1000",
+      min: "100",
+      onChange: e => setLocalStep(Number(e.target.value) || 1000),
+      onBlur: e => setBrlStep(Number(e.target.value) || 1000),
+      style: {
+        width: 90,
+        padding: "3px 6px",
+        border: "1px solid #cbd5e1",
+        borderRadius: 4,
+        fontSize: 11,
+        textAlign: "right"
+      }
+    }), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#94a3b8",
+        fontSize: 11
+      }
+    }, "= ", brlStepLabel(brlStep))) : /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#94a3b8",
+        fontSize: 11
+      }
+    }, "passo: 1%"));
   };
 
   // ======================================================================
@@ -772,6 +879,10 @@ function WizardCarteiraPhilos() {
       }
     }, "Aloca\xE7\xE3o por Grupo"), /*#__PURE__*/React.createElement("div", {
       style: {
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement(AllocModeToggle, null)), /*#__PURE__*/React.createElement("div", {
+      style: {
         display: "grid",
         gridTemplateColumns: "1fr 350px",
         gap: 24,
@@ -802,7 +913,15 @@ function WizardCarteiraPhilos() {
         fontWeight: 600,
         color: "#475569"
       }
-    }, "% (Peso)"), /*#__PURE__*/React.createElement("th", {
+    }, "%"), /*#__PURE__*/React.createElement("th", {
+      style: {
+        textAlign: "right",
+        padding: "12px 8px",
+        fontSize: 13,
+        fontWeight: 600,
+        color: "#475569"
+      }
+    }, "R$"), /*#__PURE__*/React.createElement("th", {
       style: {
         textAlign: "center",
         padding: "12px 8px",
@@ -821,7 +940,7 @@ function WizardCarteiraPhilos() {
         color: "#475569"
       }
     }, "+/-", /*#__PURE__*/React.createElement(HelpTip, {
-      text: "Aumenta/diminui em 1 ponto percentual. A diferen\xE7a \xE9 redistribu\xEDda entre os grupos n\xE3o fixados"
+      text: "Aumenta/diminui o valor. A diferen\xE7a \xE9 redistribu\xEDda entre os grupos n\xE3o fixados"
     })), /*#__PURE__*/React.createElement("th", {
       style: {
         textAlign: "left",
@@ -855,31 +974,68 @@ function WizardCarteiraPhilos() {
     }), GROUPS[gid].nome), /*#__PURE__*/React.createElement("td", {
       style: {
         padding: "12px 8px",
-        fontSize: 14,
+        fontSize: 13,
         textAlign: "right"
       }
-    }, /*#__PURE__*/React.createElement("input", {
+    }, allocInputMode === "pct" ? /*#__PURE__*/React.createElement("input", {
       key: `group-pct-${gid}-${customGroups[gid].toFixed(2)}`,
       type: "number",
       defaultValue: customGroups[gid].toFixed(2),
       onBlur: e => {
         const val = parseFloat(e.target.value) || 0;
-        if (val !== customGroups[gid]) {
-          setCustomGroups(prev => ({
-            ...prev,
-            [gid]: val
-          }));
-        }
+        if (val !== customGroups[gid]) setCustomGroups(prev => ({
+          ...prev,
+          [gid]: val
+        }));
       },
       style: {
-        width: 80,
+        width: 76,
         padding: "6px 8px",
         border: "1px solid #cbd5e1",
         borderRadius: 4,
         fontSize: 13,
         textAlign: "right"
       }
-    })), /*#__PURE__*/React.createElement("td", {
+    }) : /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#64748b",
+        fontSize: 13
+      }
+    }, customGroups[gid].toFixed(2), "%")), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "12px 8px",
+        fontSize: 13,
+        textAlign: "right"
+      }
+    }, allocInputMode === "brl" ? /*#__PURE__*/React.createElement("input", {
+      key: `group-brl-${gid}-${Math.round(customGroups[gid] / 100 * totalAmount)}`,
+      type: "number",
+      defaultValue: Math.round(customGroups[gid] / 100 * totalAmount),
+      onBlur: e => {
+        const val = parseFloat(e.target.value) || 0;
+        const newPct = totalAmount > 0 ? val / totalAmount * 100 : 0;
+        if (Math.abs(newPct - customGroups[gid]) > 0.001) setCustomGroups(prev => ({
+          ...prev,
+          [gid]: newPct
+        }));
+      },
+      style: {
+        width: 108,
+        padding: "6px 8px",
+        border: "1px solid #cbd5e1",
+        borderRadius: 4,
+        fontSize: 13,
+        textAlign: "right"
+      }
+    }) : /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: "#64748b",
+        fontSize: 12
+      }
+    }, (customGroups[gid] / 100 * totalAmount).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    }))), /*#__PURE__*/React.createElement("td", {
       style: {
         padding: "12px 8px",
         textAlign: "center"
@@ -901,10 +1057,11 @@ function WizardCarteiraPhilos() {
     })), /*#__PURE__*/React.createElement("td", {
       style: {
         padding: "12px 8px",
-        textAlign: "center"
+        textAlign: "center",
+        whiteSpace: "nowrap"
       }
     }, /*#__PURE__*/React.createElement("button", {
-      onClick: () => adjustGroupBy(gid, -1),
+      onClick: () => allocInputMode === "pct" ? adjustGroupBy(gid, -1) : adjustGroupByDelta(gid, -(brlStep / totalAmount * 100)),
       style: {
         padding: "4px 8px",
         marginRight: 4,
@@ -913,11 +1070,11 @@ function WizardCarteiraPhilos() {
         border: "none",
         borderRadius: 4,
         cursor: "pointer",
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: 600
       }
-    }, "−"), /*#__PURE__*/React.createElement("button", {
-      onClick: () => adjustGroupBy(gid, 1),
+    }, allocInputMode === "pct" ? "−1%" : `−${brlStepLabel(brlStep)}`), /*#__PURE__*/React.createElement("button", {
+      onClick: () => allocInputMode === "pct" ? adjustGroupBy(gid, 1) : adjustGroupByDelta(gid, brlStep / totalAmount * 100),
       style: {
         padding: "4px 8px",
         backgroundColor: "#10b981",
@@ -925,10 +1082,10 @@ function WizardCarteiraPhilos() {
         border: "none",
         borderRadius: 4,
         cursor: "pointer",
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: 600
       }
-    }, "+")), /*#__PURE__*/React.createElement("td", {
+    }, allocInputMode === "pct" ? "+1%" : `+${brlStepLabel(brlStep)}`)), /*#__PURE__*/React.createElement("td", {
       style: {
         padding: "12px 8px"
       }
@@ -2046,6 +2203,26 @@ function WizardCarteiraPhilos() {
     }
     setAssetAllocations(newAllocations);
   };
+  const adjustAssetByDelta = (assetKey, groupId, deltaPct) => {
+    const alloc = buildAllocationStructure();
+    const oldVal = alloc[groupId].assets.find(a => a.key === assetKey)?.pct || 0;
+    const newVal = Math.max(0, oldVal + deltaPct);
+    const actualDelta = newVal - oldVal;
+    const nonFixed = alloc[groupId].assets.filter(a => a.key !== assetKey && !fixedAssets[a.key]);
+    const newAlloc = {
+      ...assetAllocations,
+      [assetKey]: newVal
+    };
+    if (nonFixed.length > 0) {
+      const nonFixedSum = nonFixed.reduce((s, a) => s + (newAlloc[a.key] !== undefined ? newAlloc[a.key] : a.pct), 0);
+      nonFixed.forEach(a => {
+        const cur = newAlloc[a.key] !== undefined ? newAlloc[a.key] : a.pct;
+        const proportion = nonFixedSum > 0 ? cur / nonFixedSum : 1 / nonFixed.length;
+        newAlloc[a.key] = Math.max(0, cur - actualDelta * proportion);
+      });
+    }
+    setAssetAllocations(newAlloc);
+  };
 
   // ======================================================================
   // 2d. STEP 3: ALLOCATION FINE-TUNING
@@ -2073,14 +2250,23 @@ function WizardCarteiraPhilos() {
         maxWidth: 1200,
         margin: "0 auto"
       }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginBottom: 16,
+        flexWrap: "wrap",
+        gap: 12
+      }
     }, /*#__PURE__*/React.createElement("h2", {
       style: {
         fontSize: 24,
         fontWeight: 700,
-        marginBottom: 16,
-        color: "#0f172a"
+        color: "#0f172a",
+        margin: 0
       }
-    }, "Ajuste Fino da Aloca\xE7\xE3o"), /*#__PURE__*/React.createElement("div", {
+    }, "Ajuste Fino da Aloca\xE7\xE3o"), /*#__PURE__*/React.createElement(AllocModeToggle, null)), /*#__PURE__*/React.createElement("div", {
       style: {
         marginBottom: 16
       }
@@ -2196,7 +2382,7 @@ function WizardCarteiraPhilos() {
           padding: "8px 8px",
           fontSize: 12,
           fontWeight: 600,
-          color: "#475569"
+          color: allocInputMode === "pct" ? THEME.primary : "#475569"
         }
       }, "%"), /*#__PURE__*/React.createElement("th", {
         style: {
@@ -2204,7 +2390,7 @@ function WizardCarteiraPhilos() {
           padding: "8px 8px",
           fontSize: 12,
           fontWeight: 600,
-          color: "#475569"
+          color: allocInputMode === "brl" ? THEME.primary : "#475569"
         }
       }, "R$"), /*#__PURE__*/React.createElement("th", {
         style: {
@@ -2261,18 +2447,16 @@ function WizardCarteiraPhilos() {
             fontSize: 12,
             textAlign: "right"
           }
-        }, /*#__PURE__*/React.createElement("input", {
+        }, allocInputMode === "pct" ? /*#__PURE__*/React.createElement("input", {
           key: `alloc-${asset.key}-${asset.pct.toFixed(2)}`,
           type: "number",
           defaultValue: asset.pct.toFixed(2),
           onBlur: e => {
             const val = parseFloat(e.target.value) || 0;
-            if (val !== asset.pct) {
-              setAssetAllocations(prev => ({
-                ...prev,
-                [asset.key]: val
-              }));
-            }
+            if (val !== asset.pct) setAssetAllocations(prev => ({
+              ...prev,
+              [asset.key]: val
+            }));
           },
           style: {
             width: 70,
@@ -2282,14 +2466,39 @@ function WizardCarteiraPhilos() {
             fontSize: 11,
             textAlign: "right"
           }
-        })), /*#__PURE__*/React.createElement("td", {
+        }) : /*#__PURE__*/React.createElement("span", {
+          style: {
+            fontSize: 11,
+            color: "#64748b"
+          }
+        }, asset.pct.toFixed(2), "%")), /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "8px 8px",
             fontSize: 12,
             textAlign: "right",
             color: "#1e293b"
           }
-        }, assetValue.toLocaleString("pt-BR", {
+        }, allocInputMode === "brl" ? /*#__PURE__*/React.createElement("input", {
+          key: `alloc-brl-${asset.key}-${Math.round(assetValue)}`,
+          type: "number",
+          defaultValue: Math.round(assetValue),
+          onBlur: e => {
+            const val = parseFloat(e.target.value) || 0;
+            const newPct = totalAmount > 0 ? val / totalAmount * 100 : 0;
+            if (Math.abs(newPct - asset.pct) > 0.001) setAssetAllocations(prev => ({
+              ...prev,
+              [asset.key]: newPct
+            }));
+          },
+          style: {
+            width: 100,
+            padding: "4px 6px",
+            border: "1px solid #cbd5e1",
+            borderRadius: 4,
+            fontSize: 11,
+            textAlign: "right"
+          }
+        }) : assetValue.toLocaleString("pt-BR", {
           style: "currency",
           currency: "BRL"
         }), (() => {
@@ -2327,10 +2536,11 @@ function WizardCarteiraPhilos() {
         })), /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "8px 8px",
-            textAlign: "center"
+            textAlign: "center",
+            whiteSpace: "nowrap"
           }
         }, /*#__PURE__*/React.createElement("button", {
-          onClick: () => adjustAssetBy(asset.key, groupId, -1),
+          onClick: () => allocInputMode === "pct" ? adjustAssetBy(asset.key, groupId, -1) : adjustAssetByDelta(asset.key, groupId, -(brlStep / totalAmount * 100)),
           style: {
             padding: "3px 6px",
             marginRight: 4,
@@ -2339,11 +2549,11 @@ function WizardCarteiraPhilos() {
             border: "none",
             borderRadius: 3,
             cursor: "pointer",
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: 600
           }
-        }, "−"), /*#__PURE__*/React.createElement("button", {
-          onClick: () => adjustAssetBy(asset.key, groupId, 1),
+        }, allocInputMode === "pct" ? "−1%" : `−${brlStepLabel(brlStep)}`), /*#__PURE__*/React.createElement("button", {
+          onClick: () => allocInputMode === "pct" ? adjustAssetBy(asset.key, groupId, 1) : adjustAssetByDelta(asset.key, groupId, brlStep / totalAmount * 100),
           style: {
             padding: "3px 6px",
             backgroundColor: "#10b981",
@@ -2351,10 +2561,10 @@ function WizardCarteiraPhilos() {
             border: "none",
             borderRadius: 3,
             cursor: "pointer",
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: 600
           }
-        }, "+")));
+        }, allocInputMode === "pct" ? "+1%" : `+${brlStepLabel(brlStep)}`)));
       }))), /*#__PURE__*/React.createElement("div", {
         style: {
           display: "flex",
