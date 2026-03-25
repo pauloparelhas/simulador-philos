@@ -709,100 +709,46 @@ function WizardCarteiraPhilos() {
     setCustomGroups(updated);
   };
   const adjustGroupBy = (groupId, delta) => {
-    const oldVal = customGroups[groupId];
-    const newVal = delta > 0 ? Math.ceil(oldVal) : Math.floor(oldVal);
-    const actualDelta = newVal - oldVal;
-    if (actualDelta === 0) {
-      const nextVal = oldVal + delta;
-      const updated = {
-        ...customGroups,
-        [groupId]: nextVal
-      };
-      const nonFixed = Object.keys(updated).filter(gid => gid !== groupId && !fixedGroups[gid]);
-      if (nonFixed.length > 0) {
-        const nonFixedSum = nonFixed.reduce((a, gid) => a + updated[gid], 0);
-        const absToRedist = Math.abs(actualDelta || delta);
-        nonFixed.forEach(gid => {
-          const proportion = nonFixedSum > 0 ? updated[gid] / nonFixedSum : 1 / nonFixed.length;
-          updated[gid] -= absToRedist * proportion * Math.sign(delta);
-        });
-      }
-      setCustomGroups(updated);
+    const oldVal = customGroups[groupId] || 0;
+    let newVal;
+    if (delta > 0) {
+      const ceiled = Math.ceil(oldVal);
+      newVal = ceiled > oldVal ? ceiled : oldVal + 1;
     } else {
-      const updated = {
-        ...customGroups,
-        [groupId]: newVal
-      };
-      const toRedist = -actualDelta;
-      const nonFixed = Object.keys(updated).filter(gid => gid !== groupId && !fixedGroups[gid]);
-      if (nonFixed.length > 0) {
-        const nonFixedSum = nonFixed.reduce((a, gid) => a + updated[gid], 0);
-        nonFixed.forEach(gid => {
-          const proportion = nonFixedSum > 0 ? updated[gid] / nonFixedSum : 1 / nonFixed.length;
-          updated[gid] += toRedist * proportion;
-        });
-      }
-      setCustomGroups(updated);
+      const floored = Math.floor(oldVal);
+      newVal = floored < oldVal ? floored : oldVal - 1;
     }
+    newVal = Math.max(0, newVal);
+    setCustomGroups(prev => ({
+      ...prev,
+      [groupId]: newVal
+    }));
   };
   const adjustGroupByAmount = (gid, deltaAmount) => {
     const currentPct = customGroups[gid] || 0;
     const currentAmount = totalAmount * currentPct / 100;
+    const snap = Math.abs(deltaAmount);
     let newAmount;
     if (deltaAmount > 0) {
-      const snapped = Math.ceil(currentAmount / 1000) * 1000;
+      const snapped = Math.ceil(currentAmount / snap) * snap;
       newAmount = snapped > currentAmount ? snapped : currentAmount + deltaAmount;
     } else {
-      const snapped = Math.floor(currentAmount / 1000) * 1000;
+      const snapped = Math.floor(currentAmount / snap) * snap;
       newAmount = snapped < currentAmount ? snapped : currentAmount + deltaAmount;
     }
     newAmount = Math.max(0, newAmount);
     const newPct = totalAmount > 0 ? newAmount / totalAmount * 100 : 0;
-    const diff = newPct - currentPct;
-    const otherGroups = Object.keys(customGroups).filter(g => g !== gid && !fixedGroups[g]);
-    if (otherGroups.length > 0) {
-      const otherSum = otherGroups.reduce((s, g) => s + (customGroups[g] || 0), 0);
-      setCustomGroups(prev => {
-        const updated = {
-          ...prev,
-          [gid]: newPct
-        };
-        otherGroups.forEach(g => {
-          const proportion = otherSum > 0 ? (customGroups[g] || 0) / otherSum : 1 / otherGroups.length;
-          updated[g] = Math.max(0, (customGroups[g] || 0) - diff * proportion);
-        });
-        return updated;
-      });
-    } else {
-      setCustomGroups(prev => ({
-        ...prev,
-        [gid]: newPct
-      }));
-    }
+    setCustomGroups(prev => ({
+      ...prev,
+      [gid]: newPct
+    }));
   };
   const setGroupByAmount = (gid, amountValue) => {
     const newPct = totalAmount > 0 ? amountValue / totalAmount * 100 : 0;
-    const diff = newPct - (customGroups[gid] || 0);
-    const otherGroups = Object.keys(customGroups).filter(g => g !== gid && !fixedGroups[g]);
-    if (otherGroups.length > 0) {
-      const otherSum = otherGroups.reduce((s, g) => s + (customGroups[g] || 0), 0);
-      setCustomGroups(prev => {
-        const updated = {
-          ...prev,
-          [gid]: newPct
-        };
-        otherGroups.forEach(g => {
-          const proportion = otherSum > 0 ? (customGroups[g] || 0) / otherSum : 1 / otherGroups.length;
-          updated[g] = Math.max(0, (customGroups[g] || 0) - diff * proportion);
-        });
-        return updated;
-      });
-    } else {
-      setCustomGroups(prev => ({
-        ...prev,
-        [gid]: newPct
-      }));
-    }
+    setCustomGroups(prev => ({
+      ...prev,
+      [gid]: newPct
+    }));
   };
 
   // ======================================================================
@@ -854,7 +800,7 @@ function WizardCarteiraPhilos() {
         color: "#475569"
       }
     }, "%", /*#__PURE__*/React.createElement(HelpTip, {
-      text: "Use \u2212 e + para ajustar em 1% por clique (arredonda para o pr\xF3ximo inteiro se necess\xE1rio). A diferen\xE7a \xE9 redistribu\xEDda entre os grupos n\xE3o fixados."
+      text: "Use \u2212 e + para ajustar em 1% por clique (arredonda para o pr\xF3ximo inteiro no 1\xBA clique). Clique em 'Redistribuir para 100%' para balancear os demais grupos."
     })), /*#__PURE__*/React.createElement("th", {
       style: {
         textAlign: "center",
@@ -874,7 +820,7 @@ function WizardCarteiraPhilos() {
         color: "#475569"
       }
     }, "Fixar", /*#__PURE__*/React.createElement(HelpTip, {
-      text: "Marque para manter este percentual fixo durante redistribui\xE7\xF5es autom\xE1ticas"
+      text: "Marque para que este grupo seja ignorado ao clicar em 'Redistribuir para 100%'"
     })))), /*#__PURE__*/React.createElement("tbody", null, groupIds.map(gid => /*#__PURE__*/React.createElement("tr", {
       key: gid,
       style: {
@@ -2087,25 +2033,20 @@ function WizardCarteiraPhilos() {
   };
   const adjustAssetBy = (assetKey, groupId, delta) => {
     const alloc = buildAllocationStructure();
-    const oldVal = alloc[groupId].assets.find(a => a.key === assetKey)?.pct || 0;
-    const newVal = delta > 0 ? Math.ceil(oldVal) : Math.floor(oldVal);
-    const actualDelta = newVal - oldVal;
-    const targetPct = customGroups[groupId];
-    const nonFixedAssetsList = alloc[groupId].assets.filter(a => a.key !== assetKey && !fixedAssets[a.key]);
-    const newAllocations = {
-      ...assetAllocations,
-      [assetKey]: newVal
-    };
-    if (nonFixedAssetsList.length > 0) {
-      const nonFixedSum = nonFixedAssetsList.reduce((a, b) => a + (newAllocations[b.key] !== undefined ? newAllocations[b.key] : b.pct), 0);
-      const toRedist = -actualDelta || -delta;
-      nonFixedAssetsList.forEach(asset => {
-        const currentPct = newAllocations[asset.key] !== undefined ? newAllocations[asset.key] : asset.pct;
-        const proportion = nonFixedSum > 0 ? currentPct / nonFixedSum : 1 / nonFixedAssetsList.length;
-        newAllocations[asset.key] = currentPct + toRedist * proportion;
-      });
+    const oldVal = alloc[groupId]?.assets.find(a => a.key === assetKey)?.pct || 0;
+    let newVal;
+    if (delta > 0) {
+      const ceiled = Math.ceil(oldVal);
+      newVal = ceiled > oldVal ? ceiled : oldVal + 1;
+    } else {
+      const floored = Math.floor(oldVal);
+      newVal = floored < oldVal ? floored : oldVal - 1;
     }
-    setAssetAllocations(newAllocations);
+    newVal = Math.max(0, newVal);
+    setAssetAllocations(prev => ({
+      ...prev,
+      [assetKey]: newVal
+    }));
   };
   const adjustAssetByDelta = (assetKey, groupId, deltaPct) => {
     const alloc = buildAllocationStructure();
@@ -2129,61 +2070,30 @@ function WizardCarteiraPhilos() {
   };
   const adjustAssetByAmount = (assetKey, groupId, deltaAmount) => {
     const alloc = buildAllocationStructure();
-    const oldPct = alloc[groupId].assets.find(a => a.key === assetKey)?.pct || 0;
+    const oldPct = alloc[groupId]?.assets.find(a => a.key === assetKey)?.pct || 0;
     const oldAmount = totalAmount * oldPct / 100;
+    const snap = Math.abs(deltaAmount);
     let newAmount;
     if (deltaAmount > 0) {
-      const snapped = Math.ceil(oldAmount / 1000) * 1000;
+      const snapped = Math.ceil(oldAmount / snap) * snap;
       newAmount = snapped > oldAmount ? snapped : oldAmount + deltaAmount;
     } else {
-      const snapped = Math.floor(oldAmount / 1000) * 1000;
+      const snapped = Math.floor(oldAmount / snap) * snap;
       newAmount = snapped < oldAmount ? snapped : oldAmount + deltaAmount;
     }
     newAmount = Math.max(0, newAmount);
     const newPct = totalAmount > 0 ? newAmount / totalAmount * 100 : 0;
-    const actualDelta = newPct - oldPct;
-    const nonFixedAssetsList = alloc[groupId].assets.filter(a => a.key !== assetKey && !fixedAssets[a.key]);
-    const newAllocations = {
-      ...assetAllocations,
+    setAssetAllocations(prev => ({
+      ...prev,
       [assetKey]: newPct
-    };
-    if (nonFixedAssetsList.length > 0) {
-      const nonFixedSum = nonFixedAssetsList.reduce((a, b) => {
-        const p = newAllocations[b.key] !== undefined ? newAllocations[b.key] : b.pct;
-        return a + p;
-      }, 0);
-      const toRedist = -actualDelta;
-      nonFixedAssetsList.forEach(asset => {
-        const currentPct = newAllocations[asset.key] !== undefined ? newAllocations[asset.key] : asset.pct;
-        const proportion = nonFixedSum > 0 ? currentPct / nonFixedSum : 1 / nonFixedAssetsList.length;
-        newAllocations[asset.key] = Math.max(0, currentPct + toRedist * proportion);
-      });
-    }
-    setAssetAllocations(newAllocations);
+    }));
   };
   const setAssetByAmount = (assetKey, groupId, amountValue) => {
-    const alloc = buildAllocationStructure();
-    const oldPct = alloc[groupId]?.assets.find(a => a.key === assetKey)?.pct || 0;
     const newPct = totalAmount > 0 ? amountValue / totalAmount * 100 : 0;
-    const actualDelta = newPct - oldPct;
-    const nonFixedAssetsList = alloc[groupId]?.assets.filter(a => a.key !== assetKey && !fixedAssets[a.key]) || [];
-    const newAllocations = {
-      ...assetAllocations,
+    setAssetAllocations(prev => ({
+      ...prev,
       [assetKey]: newPct
-    };
-    if (nonFixedAssetsList.length > 0) {
-      const nonFixedSum = nonFixedAssetsList.reduce((a, b) => {
-        const p = newAllocations[b.key] !== undefined ? newAllocations[b.key] : b.pct;
-        return a + p;
-      }, 0);
-      const toRedist = -actualDelta;
-      nonFixedAssetsList.forEach(asset => {
-        const currentPct = newAllocations[asset.key] !== undefined ? newAllocations[asset.key] : asset.pct;
-        const proportion = nonFixedSum > 0 ? currentPct / nonFixedSum : 1 / nonFixedAssetsList.length;
-        newAllocations[asset.key] = Math.max(0, currentPct + toRedist * proportion);
-      });
-    }
-    setAssetAllocations(newAllocations);
+    }));
   };
 
   // ======================================================================
@@ -2347,7 +2257,7 @@ function WizardCarteiraPhilos() {
           color: "#475569"
         }
       }, "%", /*#__PURE__*/React.createElement(HelpTip, {
-        text: "Use \u2212 e + para ajustar em 1% por clique. A diferen\xE7a \xE9 redistribu\xEDda entre os ativos n\xE3o fixados do mesmo grupo."
+        text: "Use \u2212 e + para ajustar em 1% por clique (arredonda para o pr\xF3ximo inteiro no 1\xBA clique). Clique em 'Redistribuir' para balancear os demais ativos do grupo."
       })), /*#__PURE__*/React.createElement("th", {
         style: {
           textAlign: "center",
@@ -2367,7 +2277,7 @@ function WizardCarteiraPhilos() {
           color: "#475569"
         }
       }, "Fixar", /*#__PURE__*/React.createElement(HelpTip, {
-        text: "Marque para manter este percentual fixo durante redistribui\xE7\xF5es"
+        text: "Marque para que este ativo seja ignorado ao clicar em 'Redistribuir'"
       })))), /*#__PURE__*/React.createElement("tbody", null, groupData.assets.map(asset => {
         const assetValue = totalAmount * asset.pct / 100;
         return /*#__PURE__*/React.createElement("tr", {
