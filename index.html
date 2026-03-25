@@ -2474,31 +2474,47 @@ function WizardCarteiraPhilos() {
         }
       }, currentSum.toFixed(1), "% (meta: ", targetPct.toFixed(1), "%)")), /*#__PURE__*/React.createElement("div", {
         style: {
-          marginTop: 12
+          marginTop: 10,
+          display: "flex",
+          alignItems: "center",
+          gap: 10
         }
       }, /*#__PURE__*/React.createElement("button", {
         onClick: () => redistributeAssetsInGroup(groupId, alloc),
         style: {
-          padding: "6px 12px",
+          padding: "5px 12px",
           backgroundColor: "#2563eb",
           color: "#fff",
           border: "none",
           borderRadius: 6,
           cursor: "pointer",
           fontSize: 12,
-          fontWeight: 600
+          fontWeight: 600,
+          whiteSpace: "nowrap",
+          flexShrink: 0
         }
-      }, "Redistribuir", /*#__PURE__*/React.createElement(HelpTip, {
-        text: "Redistribui entre os ativos n\xE3o fixados deste grupo para atingir a meta do grupo"
-      }))));
+      }, "Redistribuir no grupo"), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 11,
+          color: "#94a3b8",
+          lineHeight: 1.3
+        }
+      }, "Distribui a meta de ", /*#__PURE__*/React.createElement("strong", null, targetPct.toFixed(1), "%"), " entre os ativos n\xE3o fixados deste grupo")));
     }), /*#__PURE__*/React.createElement("div", {
       style: {
-        marginTop: 20
+        marginTop: 20,
+        padding: "14px 16px",
+        backgroundColor: "#f8fafc",
+        border: "1px solid #e2e8f0",
+        borderRadius: 8,
+        display: "flex",
+        alignItems: "center",
+        gap: 16
       }
     }, /*#__PURE__*/React.createElement("button", {
       onClick: redistributeAllAssets,
       style: {
-        padding: "8px 16px",
+        padding: "8px 18px",
         backgroundColor: "#10b981",
         color: "#fff",
         border: "none",
@@ -2506,11 +2522,16 @@ function WizardCarteiraPhilos() {
         cursor: "pointer",
         fontSize: 13,
         fontWeight: 600,
-        marginRight: 12
+        whiteSpace: "nowrap",
+        flexShrink: 0
       }
-    }, "Redistribuir Tudo para 100%", /*#__PURE__*/React.createElement(HelpTip, {
-      text: "Ajusta todos os ativos n\xE3o fixados proporcionalmente para totalizar 100%"
-    }))), /*#__PURE__*/React.createElement("div", {
+    }, "Redistribuir Tudo para 100%"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        color: "#64748b",
+        lineHeight: 1.4
+      }
+    }, "Ajusta proporcionalmente ", /*#__PURE__*/React.createElement("strong", null, "todos os ativos n\xE3o fixados"), ", em todos os grupos, para que o total alcance exatamente 100%. Ativos e grupos marcados como \"Fixar\" s\xE3o preservados.")), /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         gap: 12,
