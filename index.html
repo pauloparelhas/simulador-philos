@@ -2840,11 +2840,6 @@ ${s3}
   const StepFinalProposal = () => {
     const alloc = buildAllocationStructure();
     const totalSum = Object.keys(alloc).reduce((a, gid) => a + calculateGroupTotal(gid, alloc), 0);
-    const chartData = Object.keys(alloc).filter(gid => calculateGroupTotal(gid, alloc) > 0).map(gid => ({
-      name: GROUPS[gid].nome,
-      value: calculateGroupTotal(gid, alloc),
-      color: GROUPS[gid].cor
-    }));
     return /*#__PURE__*/React.createElement("div", {
       style: {
         maxWidth: 1200,
@@ -2923,12 +2918,9 @@ ${s3}
       }
     }, option.label)))), /*#__PURE__*/React.createElement("div", {
       style: {
-        display: "grid",
-        gridTemplateColumns: "1fr 350px",
-        gap: 24,
         marginBottom: 24
       }
-    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("table", {
+    }, /*#__PURE__*/React.createElement("table", {
       style: {
         width: "100%",
         borderCollapse: "collapse"
@@ -3518,30 +3510,6 @@ ${s3}
       currency: "BRL",
       maximumFractionDigits: 0
     })))))), /*#__PURE__*/React.createElement("div", {
-      style: {
-        height: 350,
-        minWidth: 300
-      }
-    }, /*#__PURE__*/React.createElement(ResponsiveContainer, {
-      width: "100%",
-      height: "100%"
-    }, /*#__PURE__*/React.createElement(PieChart, null, /*#__PURE__*/React.createElement(Pie, {
-      data: chartData,
-      cx: "50%",
-      cy: "50%",
-      outerRadius: 90,
-      paddingAngle: 2,
-      dataKey: "value",
-      label: ({
-        name,
-        value
-      }) => `${name} ${value.toFixed(1)}%`
-    }, chartData.map((entry, idx) => /*#__PURE__*/React.createElement(Cell, {
-      key: `cell-${idx}`,
-      fill: entry.color
-    }))), /*#__PURE__*/React.createElement(Tooltip, {
-      formatter: value => `${value.toFixed(1)}%`
-    }))))), /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         gap: 12,
