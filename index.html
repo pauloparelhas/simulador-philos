@@ -905,21 +905,22 @@ function WizardCarteiraPhilos() {
       style: {
         display: "flex",
         alignItems: "center",
-        gap: 4,
+        gap: 3,
         justifyContent: "center"
       }
     }, /*#__PURE__*/React.createElement("button", {
       onClick: () => adjustGroupBy(gid, -1),
       title: "Diminuir 1%",
       style: {
-        padding: "3px 8px",
-        fontSize: 14,
+        padding: "1px 5px",
+        fontSize: 12,
         lineHeight: 1,
-        backgroundColor: "transparent",
-        border: "1px solid #cbd5e1",
-        borderRadius: 4,
+        fontWeight: 700,
+        backgroundColor: "#fee2e2",
+        border: "1px solid #fecaca",
+        borderRadius: 3,
         cursor: "pointer",
-        color: "#64748b"
+        color: "#dc2626"
       }
     }, "\u2212"), /*#__PURE__*/React.createElement("input", {
       key: `group-pct-${gid}-${customGroups[gid].toFixed(1)}`,
@@ -944,20 +945,43 @@ function WizardCarteiraPhilos() {
       onClick: () => adjustGroupBy(gid, 1),
       title: "Aumentar 1%",
       style: {
-        padding: "3px 8px",
-        fontSize: 14,
+        padding: "1px 5px",
+        fontSize: 12,
         lineHeight: 1,
-        backgroundColor: "transparent",
-        border: "1px solid #cbd5e1",
-        borderRadius: 4,
+        fontWeight: 700,
+        backgroundColor: "#dcfce7",
+        border: "1px solid #bbf7d0",
+        borderRadius: 3,
         cursor: "pointer",
-        color: "#64748b"
+        color: "#16a34a"
       }
     }, "+"))), /*#__PURE__*/React.createElement("td", {
       style: {
         padding: "12px 8px"
       }
-    }, /*#__PURE__*/React.createElement("input", {
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 3,
+        justifyContent: "center"
+      }
+    }, [-10000, -1000].map(d => /*#__PURE__*/React.createElement("button", {
+      key: d,
+      onClick: () => adjustGroupByAmount(gid, d),
+      style: {
+        padding: "1px 5px",
+        fontSize: 11,
+        lineHeight: 1,
+        fontWeight: 600,
+        backgroundColor: "#fee2e2",
+        border: "1px solid #fecaca",
+        borderRadius: 3,
+        cursor: "pointer",
+        color: "#dc2626",
+        whiteSpace: "nowrap"
+      }
+    }, d === -1000 ? "−1k" : "−10k")), /*#__PURE__*/React.createElement("input", {
       key: `group-amt-${gid}-${Math.round((customGroups[gid] || 0) / 100 * totalAmount)}`,
       type: "text",
       defaultValue: Math.round((customGroups[gid] || 0) / 100 * totalAmount).toLocaleString("pt-BR"),
@@ -967,14 +991,29 @@ function WizardCarteiraPhilos() {
         setGroupByAmount(gid, amtValue);
       },
       style: {
-        width: 110,
-        padding: "6px 8px",
+        width: 96,
+        padding: "6px 6px",
         border: "1px solid #cbd5e1",
         borderRadius: 4,
         fontSize: 13,
-        textAlign: "right"
+        textAlign: "center"
       }
-    })), /*#__PURE__*/React.createElement("td", {
+    }), [1000, 10000].map(d => /*#__PURE__*/React.createElement("button", {
+      key: d,
+      onClick: () => adjustGroupByAmount(gid, d),
+      style: {
+        padding: "1px 5px",
+        fontSize: 11,
+        lineHeight: 1,
+        fontWeight: 600,
+        backgroundColor: "#dcfce7",
+        border: "1px solid #bbf7d0",
+        borderRadius: 3,
+        cursor: "pointer",
+        color: "#16a34a",
+        whiteSpace: "nowrap"
+      }
+    }, d === 1000 ? "+1k" : "+10k")))), /*#__PURE__*/React.createElement("td", {
       style: {
         padding: "12px 8px",
         textAlign: "center"
@@ -2375,14 +2414,15 @@ function WizardCarteiraPhilos() {
           onClick: () => adjustAssetBy(asset.key, groupId, -1),
           title: "Diminuir 1%",
           style: {
-            padding: "2px 7px",
-            fontSize: 13,
+            padding: "1px 5px",
+            fontSize: 11,
             lineHeight: 1,
-            backgroundColor: "transparent",
-            border: "1px solid #cbd5e1",
+            fontWeight: 700,
+            backgroundColor: "#fee2e2",
+            border: "1px solid #fecaca",
             borderRadius: 3,
             cursor: "pointer",
-            color: "#64748b"
+            color: "#dc2626"
           }
         }, "\u2212"), /*#__PURE__*/React.createElement("input", {
           key: `alloc-${asset.key}-${asset.pct.toFixed(1)}`,
@@ -2396,7 +2436,7 @@ function WizardCarteiraPhilos() {
             }));
           },
           style: {
-            width: 64,
+            width: 60,
             padding: "4px 4px",
             border: "1px solid #cbd5e1",
             borderRadius: 3,
@@ -2407,20 +2447,43 @@ function WizardCarteiraPhilos() {
           onClick: () => adjustAssetBy(asset.key, groupId, 1),
           title: "Aumentar 1%",
           style: {
-            padding: "2px 7px",
-            fontSize: 13,
+            padding: "1px 5px",
+            fontSize: 11,
             lineHeight: 1,
-            backgroundColor: "transparent",
-            border: "1px solid #cbd5e1",
+            fontWeight: 700,
+            backgroundColor: "#dcfce7",
+            border: "1px solid #bbf7d0",
             borderRadius: 3,
             cursor: "pointer",
-            color: "#64748b"
+            color: "#16a34a"
           }
         }, "+"))), /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "8px 8px"
           }
-        }, /*#__PURE__*/React.createElement("input", {
+        }, /*#__PURE__*/React.createElement("div", {
+          style: {
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+            justifyContent: "center"
+          }
+        }, [-10000, -1000].map(d => /*#__PURE__*/React.createElement("button", {
+          key: d,
+          onClick: () => adjustAssetByAmount(asset.key, groupId, d),
+          style: {
+            padding: "1px 4px",
+            fontSize: 10,
+            lineHeight: 1,
+            fontWeight: 600,
+            backgroundColor: "#fee2e2",
+            border: "1px solid #fecaca",
+            borderRadius: 3,
+            cursor: "pointer",
+            color: "#dc2626",
+            whiteSpace: "nowrap"
+          }
+        }, d === -1000 ? "−1k" : "−10k")), /*#__PURE__*/React.createElement("input", {
           key: `asset-amt-${asset.key}-${Math.round(assetValue)}`,
           type: "text",
           defaultValue: Math.round(assetValue).toLocaleString("pt-BR"),
@@ -2430,14 +2493,29 @@ function WizardCarteiraPhilos() {
             setAssetByAmount(asset.key, groupId, amtValue);
           },
           style: {
-            width: 100,
-            padding: "4px 6px",
+            width: 80,
+            padding: "4px 4px",
             border: "1px solid #cbd5e1",
             borderRadius: 3,
             fontSize: 11,
-            textAlign: "right"
+            textAlign: "center"
           }
-        }), (() => {
+        }), [1000, 10000].map(d => /*#__PURE__*/React.createElement("button", {
+          key: d,
+          onClick: () => adjustAssetByAmount(asset.key, groupId, d),
+          style: {
+            padding: "1px 4px",
+            fontSize: 10,
+            lineHeight: 1,
+            fontWeight: 600,
+            backgroundColor: "#dcfce7",
+            border: "1px solid #bbf7d0",
+            borderRadius: 3,
+            cursor: "pointer",
+            color: "#16a34a",
+            whiteSpace: "nowrap"
+          }
+        }, d === 1000 ? "+1k" : "+10k"))), (() => {
           const assetInfo = findAssetByName(asset.nome);
           if (assetInfo && assetInfo.aplicMin && assetValue > 0 && assetValue < assetInfo.aplicMin) {
             return /*#__PURE__*/React.createElement("div", {
