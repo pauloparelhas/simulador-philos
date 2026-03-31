@@ -133,6 +133,12 @@ const SUBGROUPS = {
   prefixado_curto: [
     { id: "titulos_pre", nome: "Títulos Prefixados" },
   ],
+  previdencia: [
+    { id: "prev_rf",       nome: "Renda Fixa / IPCA" },
+    { id: "prev_mm",       nome: "Multimercado" },
+    { id: "prev_rv",       nome: "Renda Variável" },
+    { id: "prev_outros",   nome: "Outros / Seguradora" },
+  ],
 };
 
 const ASSETS = [
@@ -195,6 +201,18 @@ const ASSETS = [
   { nome: "S&P 500 (ETF/BDR)",                     subgrupo: "rv_global_etf",      grupo: "rv_global",  aplicMin: 0,     benchmark: "S&P500",   cotLiq: "D+2",  rating: null, qualificado: false, emAvaliacao: false },
   // === ALTERNATIVOS ===
   { nome: "HASH11 (ETF Cripto)",                   subgrupo: "cripto",             grupo: "alternativos", aplicMin: 0,   benchmark: "-",        cotLiq: "D+2",  rating: null, qualificado: false, emAvaliacao: false },
+  // === PREVIDÊNCIA ===
+  { nome: "BTG Prev IPCA+ RF FICFIM",              subgrupo: "prev_rf",       grupo: "previdencia", aplicMin: 500,   benchmark: "IMA-B",  cotLiq: "D+4",   rating: null, qualificado: false, emAvaliacao: false },
+  { nome: "BTG Prev Tesouro IPCA+ 2035",           subgrupo: "prev_rf",       grupo: "previdencia", aplicMin: 500,   benchmark: "IMA-B",  cotLiq: "D+4",   rating: null, qualificado: false, emAvaliacao: false },
+  { nome: "SPX Nimitz Prev FICFIM",                subgrupo: "prev_mm",       grupo: "previdencia", aplicMin: 500,   benchmark: "CDI",    cotLiq: "D+4",   rating: 2.32, qualificado: false, emAvaliacao: false },
+  { nome: "Legacy Capital Prev FICFIM",            subgrupo: "prev_mm",       grupo: "previdencia", aplicMin: 500,   benchmark: "CDI",    cotLiq: "D+4",   rating: 2.41, qualificado: false, emAvaliacao: false },
+  { nome: "Ibiuna Hedge Prev FICFIM",              subgrupo: "prev_mm",       grupo: "previdencia", aplicMin: 500,   benchmark: "CDI",    cotLiq: "D+4",   rating: 2.39, qualificado: false, emAvaliacao: false },
+  { nome: "JGP Strategy Prev FICFIM",              subgrupo: "prev_mm",       grupo: "previdencia", aplicMin: 500,   benchmark: "CDI",    cotLiq: "D+4",   rating: 2.67, qualificado: false, emAvaliacao: false },
+  { nome: "Kapitalo K10 Prev FICFIM",              subgrupo: "prev_mm",       grupo: "previdencia", aplicMin: 500,   benchmark: "CDI",    cotLiq: "D+4",   rating: 2.42, qualificado: false, emAvaliacao: false },
+  { nome: "ARX Income Prev FICFIA",                subgrupo: "prev_rv",       grupo: "previdencia", aplicMin: 500,   benchmark: "-",      cotLiq: "D+4",   rating: 2.44, qualificado: false, emAvaliacao: false },
+  { nome: "Absolute Pace Prev FICFIM",             subgrupo: "prev_rv",       grupo: "previdencia", aplicMin: 500,   benchmark: "-",      cotLiq: "D+4",   rating: 2.53, qualificado: false, emAvaliacao: false },
+  { nome: "Brasilprev RF PGBL",                    subgrupo: "prev_outros",   grupo: "previdencia", aplicMin: 100,   benchmark: "CDI",    cotLiq: null,    rating: null, qualificado: false, emAvaliacao: false },
+  { nome: "Bradesco Vida e Prev Multimercado",     subgrupo: "prev_outros",   grupo: "previdencia", aplicMin: 100,   benchmark: "CDI",    cotLiq: null,    rating: null, qualificado: false, emAvaliacao: false },
 ];
 
   </script>
@@ -354,6 +372,38 @@ function WizardCarteiraPhilos() {
   const [flatView, setFlatView] = React.useState({});
   const [proposalDetailLevel, setProposalDetailLevel] = React.useState(5);
   const [isQualified, setIsQualified] = React.useState(false);
+  const [liqTargets, setLiqTargets] = React.useState({
+    d1: 0,
+    d65: 0,
+    "1ano": 0,
+    "5anos": 0,
+    "5mais": 0
+  });
+  const [customAssetLiq, setCustomAssetLiq] = React.useState({});
+  const [liqOptIn, setLiqOptIn] = React.useState(null);
+  const [advisorName, setAdvisorName] = React.useState("");
+  const [advisorPhone, setAdvisorPhone] = React.useState("");
+  const [advisorEmail, setAdvisorEmail] = React.useState("");
+  const [showAdvisorForm, setShowAdvisorForm] = React.useState(false);
+  const [showSubtotals, setShowSubtotals] = React.useState(true);
+  const [showExportModal, setShowExportModal] = React.useState(false);
+  const [showPDFDialog, setShowPDFDialog] = React.useState(false);
+  const [pdfSelectedLevels, setPdfSelectedLevels] = React.useState({
+    editor: true,
+    classes: true,
+    grupos: true,
+    subgrupos: false,
+    detalhado: true,
+    liq: true
+  });
+
+  // ======================================================================
+  // HELPERS: formatação de números
+  // ======================================================================
+
+  const fmtPct = v => Math.round(v) + "%";
+  const fmtBRL = v => Math.round(v).toLocaleString("pt-BR");
+  const fmtBRLFull = v => "R$ " + fmtBRL(v);
 
   // ======================================================================
   // HELPERS: previdência como grupo especial
@@ -363,9 +413,11 @@ function WizardCarteiraPhilos() {
   const getSubgroupsForGroup = groupId => groupId === "previdencia" ? typeof PREV_SUBGROUPS !== "undefined" ? PREV_SUBGROUPS : [] : SUBGROUPS[groupId] || [];
   const findAssetByName = nome => ASSETS.find(a => a.nome === nome) || (typeof PREV_ASSETS !== "undefined" ? PREV_ASSETS.find(a => a.nome === nome) : undefined);
 
+  // (exportMode removed — export buttons call functions directly)
+
   // Ripple-back: quando alocação de ativos prev muda, atualiza customGroups["previdencia"]
   React.useEffect(() => {
-    if (currentStep < 3) return;
+    if (currentStep < 4) return;
     if (!Object.prototype.hasOwnProperty.call(customGroups, "previdencia")) return;
     const prevKeys = Object.keys(assetAllocations).filter(k => k.startsWith("previdencia|"));
     if (prevKeys.length === 0) return;
@@ -387,6 +439,71 @@ function WizardCarteiraPhilos() {
     }
     setCustomGroups(newGroups);
   }, [assetAllocations, currentStep]);
+
+  // ======================================================================
+  // HELPERS DE LIQUIDEZ
+  // ======================================================================
+
+  const LIQ_BUCKETS = [{
+    key: "d1",
+    label: "Até D+1",
+    cor: "#059669"
+  }, {
+    key: "d65",
+    label: "Até 65 dias",
+    cor: "#2563eb"
+  }, {
+    key: "1ano",
+    label: "Até 1 ano",
+    cor: "#d97706"
+  }, {
+    key: "5anos",
+    label: "1 a 5 anos",
+    cor: "#7c3aed"
+  }, {
+    key: "5mais",
+    label: "Acima de 5 anos",
+    cor: "#ea580c"
+  }];
+  const getLiqBucket = (assetKey, cotLiq) => {
+    if (customAssetLiq[assetKey]) return customAssetLiq[assetKey];
+    if (!cotLiq) return null;
+    const m = cotLiq.match(/D\+(\d+)/i);
+    if (!m) return null;
+    const d = parseInt(m[1]);
+    if (d <= 1) return "d1";
+    if (d <= 65) return "d65";
+    if (d <= 365) return "1ano";
+    if (d <= 1825) return "5anos";
+    return "5mais";
+  };
+  const getLiqBucketInfo = key => LIQ_BUCKETS.find(b => b.key === key) || null;
+  const LiqBadge = ({
+    assetKey,
+    cotLiq
+  }) => {
+    const bucket = getLiqBucket(assetKey, cotLiq);
+    const info = getLiqBucketInfo(bucket);
+    if (!info) return /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        color: "#94a3b8",
+        fontStyle: "italic"
+      }
+    }, "liq?");
+    return /*#__PURE__*/React.createElement("span", {
+      style: {
+        display: "inline-block",
+        backgroundColor: info.cor,
+        color: "#fff",
+        padding: "1px 6px",
+        borderRadius: 3,
+        fontSize: 10,
+        fontWeight: 700,
+        whiteSpace: "nowrap"
+      }
+    }, info.label);
+  };
 
   // ======================================================================
   // HELPER COMPONENTS: HelpTip
@@ -534,9 +651,17 @@ function WizardCarteiraPhilos() {
       style: {
         display: "flex",
         alignItems: "center",
-        gap: 8,
+        justifyContent: "space-between",
+        gap: 16,
         marginBottom: 32,
-        paddingLeft: 4
+        paddingLeft: 4,
+        flexWrap: "wrap"
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 8
       }
     }, /*#__PURE__*/React.createElement("input", {
       type: "checkbox",
@@ -555,7 +680,140 @@ function WizardCarteiraPhilos() {
         color: "#475569",
         cursor: "pointer"
       }
-    }, "Investidor Qualificado (exibir fundos exclusivos QI)")), /*#__PURE__*/React.createElement("h3", {
+    }, "Investidor Qualificado (exibir fundos exclusivos QI)")), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setShowAdvisorForm(true),
+      style: {
+        padding: "8px 16px",
+        backgroundColor: "#1e3a5f",
+        color: "#fff",
+        border: "none",
+        borderRadius: 6,
+        fontSize: 13,
+        fontWeight: 600,
+        cursor: "pointer"
+      }
+    }, "Dados do Assessor")), showAdvisorForm && /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 9999
+      },
+      onClick: () => setShowAdvisorForm(false)
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        backgroundColor: "#fff",
+        borderRadius: 12,
+        padding: 32,
+        maxWidth: 400,
+        boxShadow: "0 20px 25px rgba(0, 0, 0, 0.15)"
+      },
+      onClick: e => e.stopPropagation()
+    }, /*#__PURE__*/React.createElement("h3", {
+      style: {
+        fontSize: 20,
+        fontWeight: 700,
+        marginBottom: 24,
+        color: "#0f172a"
+      }
+    }, "Dados do Assessor"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("label", {
+      style: {
+        fontSize: 13,
+        fontWeight: 600,
+        color: "#1e293b",
+        display: "block",
+        marginBottom: 6
+      }
+    }, "Nome *"), /*#__PURE__*/React.createElement("input", {
+      type: "text",
+      key: `advisor-name-${showAdvisorForm}`,
+      defaultValue: advisorName,
+      onBlur: e => setAdvisorName(e.target.value),
+      placeholder: "Ex: Jo\xE3o Silva",
+      style: {
+        width: "100%",
+        padding: "8px 12px",
+        border: "1px solid #cbd5e1",
+        borderRadius: 6,
+        fontSize: 13,
+        backgroundColor: "#fff"
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("label", {
+      style: {
+        fontSize: 13,
+        fontWeight: 600,
+        color: "#1e293b",
+        display: "block",
+        marginBottom: 6
+      }
+    }, "Telefone"), /*#__PURE__*/React.createElement("input", {
+      type: "text",
+      key: `advisor-phone-${showAdvisorForm}`,
+      defaultValue: advisorPhone,
+      onBlur: e => setAdvisorPhone(e.target.value),
+      placeholder: "Ex: (61) 99999-9999",
+      style: {
+        width: "100%",
+        padding: "8px 12px",
+        border: "1px solid #cbd5e1",
+        borderRadius: 6,
+        fontSize: 13,
+        backgroundColor: "#fff"
+      }
+    })), /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 24
+      }
+    }, /*#__PURE__*/React.createElement("label", {
+      style: {
+        fontSize: 13,
+        fontWeight: 600,
+        color: "#1e293b",
+        display: "block",
+        marginBottom: 6
+      }
+    }, "E-mail"), /*#__PURE__*/React.createElement("input", {
+      type: "email",
+      key: `advisor-email-${showAdvisorForm}`,
+      defaultValue: advisorEmail,
+      onBlur: e => setAdvisorEmail(e.target.value),
+      placeholder: "Ex: joao@philos.com",
+      style: {
+        width: "100%",
+        padding: "8px 12px",
+        border: "1px solid #cbd5e1",
+        borderRadius: 6,
+        fontSize: 13,
+        backgroundColor: "#fff"
+      }
+    })), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setShowAdvisorForm(false),
+      style: {
+        width: "100%",
+        padding: "10px 16px",
+        backgroundColor: "#1e3a5f",
+        color: "#fff",
+        border: "none",
+        borderRadius: 6,
+        fontSize: 13,
+        fontWeight: 600,
+        cursor: "pointer"
+      }
+    }, "Salvar"))), /*#__PURE__*/React.createElement("h3", {
       style: {
         fontSize: 20,
         fontWeight: 700,
@@ -1036,11 +1294,331 @@ function WizardCarteiraPhilos() {
         fontSize: 13,
         fontWeight: 600
       }
-    }, "Pr\xF3ximo: Selecionar Ativos")));
+    }, "Pr\xF3ximo: Liquidez \u2192")));
   };
 
   // ======================================================================
-  // 2d. STEP 2: ASSET SELECTION
+  // NEW STEP 2: LIQUIDITY TARGETS
+  // ======================================================================
+
+  const StepLiquidez = () => {
+    const bucketDesc = {
+      d1: "Liquidez imediata — Tesouro Selic, fundos DI, poupança",
+      d65: "Curto prazo — fundos CDI, crédito de curto prazo",
+      "1ano": "Médio prazo — multimercado, crédito, renda variável líquida",
+      "5anos": "Longo prazo — FIDCs, crédito longo, RF estruturada",
+      "5mais": "Ilíquido / Previdência — PGBL, VGBL, fundos fechados"
+    };
+    const totalMeta = LIQ_BUCKETS.reduce((s, b) => s + (parseFloat(liqTargets[b.key]) || 0), 0);
+    const btnBase = {
+      padding: "10px 20px",
+      border: "none",
+      borderRadius: 6,
+      cursor: "pointer",
+      fontSize: 13,
+      fontWeight: 600
+    };
+    if (liqOptIn === null) {
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          maxWidth: 700,
+          margin: "0 auto"
+        }
+      }, /*#__PURE__*/React.createElement("h2", {
+        style: {
+          fontSize: 24,
+          fontWeight: 700,
+          marginBottom: 20,
+          color: "#0f172a"
+        }
+      }, "Perfil de Liquidez"), /*#__PURE__*/React.createElement("div", {
+        style: {
+          padding: 28,
+          borderRadius: 10,
+          border: "2px solid #e2e8f0",
+          backgroundColor: "#fff",
+          textAlign: "center"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 40,
+          marginBottom: 12
+        }
+      }, "\uD83D\uDCA7"), /*#__PURE__*/React.createElement("h3", {
+        style: {
+          fontSize: 18,
+          fontWeight: 700,
+          marginBottom: 8,
+          color: "#1e293b"
+        }
+      }, "Deseja definir metas de liquidez para esta carteira?"), /*#__PURE__*/React.createElement("p", {
+        style: {
+          fontSize: 13,
+          color: "#64748b",
+          marginBottom: 24,
+          maxWidth: 480,
+          margin: "0 auto 24px"
+        }
+      }, "Defina o percentual m\xEDnimo desejado em cada faixa de liquidez. Isso gera um relat\xF3rio de an\xE1lise de liquidez na proposta final."), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          gap: 12,
+          justifyContent: "center"
+        }
+      }, /*#__PURE__*/React.createElement("button", {
+        onClick: () => setLiqOptIn(true),
+        style: {
+          ...btnBase,
+          backgroundColor: "#2563eb",
+          color: "#fff"
+        }
+      }, "\u2713 Sim, definir metas"), /*#__PURE__*/React.createElement("button", {
+        onClick: () => {
+          setLiqOptIn(false);
+          setCurrentStep(3);
+        },
+        style: {
+          ...btnBase,
+          backgroundColor: "#94a3b8",
+          color: "#fff"
+        }
+      }, "N\xE3o, pular \u2192"))), /*#__PURE__*/React.createElement("div", {
+        style: {
+          display: "flex",
+          gap: 12,
+          marginTop: 20
+        }
+      }, /*#__PURE__*/React.createElement("button", {
+        onClick: () => setCurrentStep(1),
+        style: {
+          ...btnBase,
+          backgroundColor: "#94a3b8",
+          color: "#fff"
+        }
+      }, "\u2190 Voltar")));
+    }
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        maxWidth: 750,
+        margin: "0 auto"
+      }
+    }, /*#__PURE__*/React.createElement("h2", {
+      style: {
+        fontSize: 24,
+        fontWeight: 700,
+        marginBottom: 8,
+        color: "#0f172a"
+      }
+    }, "Perfil de Liquidez"), /*#__PURE__*/React.createElement("p", {
+      style: {
+        fontSize: 13,
+        color: "#64748b",
+        marginBottom: 20
+      }
+    }, "Defina o percentual m\xEDnimo que o cliente quer em cada faixa. A soma n\xE3o precisa ser 100% \u2014 representa metas m\xEDnimas de liquidez."), /*#__PURE__*/React.createElement("div", {
+      style: {
+        border: "1px solid #e2e8f0",
+        borderRadius: 8,
+        overflow: "hidden",
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("table", {
+      style: {
+        width: "100%",
+        borderCollapse: "collapse"
+      }
+    }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
+      style: {
+        backgroundColor: "#f8fafc"
+      }
+    }, /*#__PURE__*/React.createElement("th", {
+      style: {
+        textAlign: "left",
+        padding: "10px 14px",
+        fontSize: 12,
+        fontWeight: 700,
+        color: "#475569",
+        borderBottom: "1px solid #e2e8f0"
+      }
+    }, "Faixa de Liquidez"), /*#__PURE__*/React.createElement("th", {
+      style: {
+        textAlign: "left",
+        padding: "10px 14px",
+        fontSize: 12,
+        fontWeight: 700,
+        color: "#475569",
+        borderBottom: "1px solid #e2e8f0"
+      }
+    }, "Exemplos"), /*#__PURE__*/React.createElement("th", {
+      style: {
+        textAlign: "center",
+        padding: "10px 14px",
+        fontSize: 12,
+        fontWeight: 700,
+        color: "#475569",
+        borderBottom: "1px solid #e2e8f0",
+        width: 110
+      }
+    }, "Meta (%)"), /*#__PURE__*/React.createElement("th", {
+      style: {
+        textAlign: "right",
+        padding: "10px 14px",
+        fontSize: 12,
+        fontWeight: 700,
+        color: "#475569",
+        borderBottom: "1px solid #e2e8f0",
+        width: 120
+      }
+    }, "Meta (R$)"))), /*#__PURE__*/React.createElement("tbody", null, LIQ_BUCKETS.map((b, i) => {
+      const val = parseFloat(liqTargets[b.key]) || 0;
+      const valRS = totalAmount * val / 100;
+      return /*#__PURE__*/React.createElement("tr", {
+        key: b.key,
+        style: {
+          borderBottom: i < LIQ_BUCKETS.length - 1 ? "1px solid #f1f5f9" : "none"
+        }
+      }, /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "10px 14px"
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          display: "inline-block",
+          width: 10,
+          height: 10,
+          borderRadius: "50%",
+          backgroundColor: b.cor,
+          marginRight: 8
+        }
+      }), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontWeight: 600,
+          fontSize: 13,
+          color: "#1e293b"
+        }
+      }, b.label)), /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "10px 14px",
+          fontSize: 12,
+          color: "#64748b"
+        }
+      }, bucketDesc[b.key]), /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "8px 14px",
+          textAlign: "center"
+        }
+      }, /*#__PURE__*/React.createElement("input", {
+        key: `liq-${b.key}-${liqTargets[b.key]}`,
+        type: "number",
+        min: "0",
+        max: "100",
+        step: "1",
+        defaultValue: liqTargets[b.key] || "",
+        placeholder: "0",
+        onBlur: e => {
+          const v = Math.max(0, Math.min(100, parseFloat(e.target.value) || 0));
+          setLiqTargets(prev => ({
+            ...prev,
+            [b.key]: v
+          }));
+        },
+        style: {
+          width: 70,
+          padding: "6px 8px",
+          border: "1px solid #cbd5e1",
+          borderRadius: 4,
+          fontSize: 13,
+          textAlign: "right"
+        }
+      }), /*#__PURE__*/React.createElement("span", {
+        style: {
+          marginLeft: 4,
+          fontSize: 12,
+          color: "#64748b"
+        }
+      }, "%")), /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "10px 14px",
+          textAlign: "right",
+          fontSize: 12,
+          color: "#64748b"
+        }
+      }, val > 0 ? valRS.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        maximumFractionDigits: 0
+      }) : "—"));
+    })), /*#__PURE__*/React.createElement("tfoot", null, /*#__PURE__*/React.createElement("tr", {
+      style: {
+        backgroundColor: totalMeta > 100 ? "#fee2e2" : "#f8fafc"
+      }
+    }, /*#__PURE__*/React.createElement("td", {
+      colSpan: 2,
+      style: {
+        padding: "10px 14px",
+        fontWeight: 700,
+        fontSize: 13,
+        color: "#1e293b",
+        borderTop: "2px solid #e2e8f0"
+      }
+    }, "Total definido"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        padding: "10px 14px",
+        textAlign: "center",
+        fontWeight: 700,
+        fontSize: 13,
+        color: totalMeta > 100 ? "#dc2626" : "#059669",
+        borderTop: "2px solid #e2e8f0"
+      }
+    }, totalMeta.toFixed(1), "%", totalMeta > 100 ? " ⚠ excede 100%" : ""), /*#__PURE__*/React.createElement("td", {
+      style: {
+        borderTop: "2px solid #e2e8f0"
+      }
+    }))))), /*#__PURE__*/React.createElement("p", {
+      style: {
+        fontSize: 12,
+        color: "#94a3b8",
+        fontStyle: "italic",
+        marginBottom: 20
+      }
+    }, "As metas ser\xE3o comparadas com a liquidez real da carteira no relat\xF3rio final. Voc\xEA pode editar essas metas a qualquer momento durante o processo."), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 12
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        setLiqOptIn(null);
+        setCurrentStep(1);
+      },
+      style: {
+        ...btnBase,
+        backgroundColor: "#94a3b8",
+        color: "#fff"
+      }
+    }, "\u2190 Voltar"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setCurrentStep(3),
+      style: {
+        ...btnBase,
+        backgroundColor: "#2563eb",
+        color: "#fff"
+      }
+    }, "Pr\xF3ximo: Ativos \u2192"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        setLiqOptIn(false);
+        setCurrentStep(3);
+      },
+      style: {
+        ...btnBase,
+        backgroundColor: "#f1f5f9",
+        color: "#64748b",
+        border: "1px solid #cbd5e1"
+      }
+    }, "Pular sem salvar")));
+  };
+
+  // ======================================================================
+  // 2d. STEP 3: ASSET SELECTION
   // ======================================================================
 
   const StepAssetSelection = () => {
@@ -1561,14 +2139,18 @@ function WizardCarteiraPhilos() {
               display: "flex",
               alignItems: "center",
               gap: 6,
-              flexShrink: 0
+              flexShrink: 0,
+              flexWrap: "wrap"
             }
           }, /*#__PURE__*/React.createElement("span", {
             style: {
               fontSize: 11,
               color: "#64748b"
             }
-          }, selectedAsset.benchmark, " | ", selectedAsset.cotLiq), selectedAsset.rating && /*#__PURE__*/React.createElement("span", {
+          }, selectedAsset.benchmark, " | ", selectedAsset.cotLiq || "—"), /*#__PURE__*/React.createElement(LiqBadge, {
+            assetKey: `${groupId}|${selectedAsset.nome}`,
+            cotLiq: selectedAsset.cotLiq
+          }), selectedAsset.rating && /*#__PURE__*/React.createElement("span", {
             style: {
               display: "inline-block",
               backgroundColor: "#dbeafe",
@@ -1594,7 +2176,60 @@ function WizardCarteiraPhilos() {
               color: "#94a3b8",
               fontStyle: "italic"
             }
-          }, "Em avalia\xE7\xE3o")));
+          }, "Em avalia\xE7\xE3o"), groupId === "previdencia" && /*#__PURE__*/React.createElement("label", {
+            style: {
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              fontSize: 10,
+              color: "#ea580c",
+              cursor: "pointer",
+              fontWeight: 600
+            }
+          }, /*#__PURE__*/React.createElement("input", {
+            type: "checkbox",
+            checked: customAssetLiq[`${groupId}|${selectedAsset.nome}`] === "5mais",
+            onChange: e => {
+              const key = `${groupId}|${selectedAsset.nome}`;
+              setCustomAssetLiq(prev => ({
+                ...prev,
+                [key]: e.target.checked ? "5mais" : null
+              }));
+            },
+            style: {
+              width: 13,
+              height: 13
+            }
+          }), "Il\xEDquido / Previd\xEAncia")), selectedName === "__outro__" && /*#__PURE__*/React.createElement("div", {
+            style: {
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              marginTop: 4
+            }
+          }, /*#__PURE__*/React.createElement("span", {
+            style: {
+              fontSize: 11,
+              color: "#64748b"
+            }
+          }, "Liquidez:"), /*#__PURE__*/React.createElement("select", {
+            value: customAssetLiq[slotKey] || "",
+            onChange: e => setCustomAssetLiq(prev => ({
+              ...prev,
+              [slotKey]: e.target.value || null
+            })),
+            style: {
+              padding: "3px 6px",
+              border: "1px solid #cbd5e1",
+              borderRadius: 3,
+              fontSize: 11
+            }
+          }, /*#__PURE__*/React.createElement("option", {
+            value: ""
+          }, "\u2014 selecionar \u2014"), LIQ_BUCKETS.map(b => /*#__PURE__*/React.createElement("option", {
+            key: b.key,
+            value: b.key
+          }, b.label)))));
         })), flatCount === 0 && /*#__PURE__*/React.createElement("div", {
           style: {
             fontSize: 12,
@@ -1856,7 +2491,7 @@ function WizardCarteiraPhilos() {
         marginTop: 24
       }
     }, /*#__PURE__*/React.createElement("button", {
-      onClick: () => setCurrentStep(1),
+      onClick: () => setCurrentStep(2),
       style: {
         padding: "10px 20px",
         backgroundColor: "#94a3b8",
@@ -1882,10 +2517,10 @@ function WizardCarteiraPhilos() {
         if (errors.length > 0) {
           alert("Preencha todos os ativos antes de avançar:\n\n" + errors.join("\n"));
         } else {
-          // Reset allocations para re-derivar do Step 2
+          // Reset allocations para re-derivar do Step 3
           setAssetAllocations({});
           setFixedAssets({});
-          setCurrentStep(3);
+          setCurrentStep(4);
         }
       },
       style: {
@@ -2538,7 +3173,7 @@ function WizardCarteiraPhilos() {
         marginTop: 24
       }
     }, /*#__PURE__*/React.createElement("button", {
-      onClick: () => setCurrentStep(2),
+      onClick: () => setCurrentStep(3),
       style: {
         padding: "10px 20px",
         backgroundColor: "#94a3b8",
@@ -2550,7 +3185,7 @@ function WizardCarteiraPhilos() {
         fontWeight: 600
       }
     }, "Voltar"), /*#__PURE__*/React.createElement("button", {
-      onClick: () => setCurrentStep(4),
+      onClick: () => setCurrentStep(5),
       style: {
         padding: "10px 20px",
         backgroundColor: "#2563eb",
@@ -2561,13 +3196,250 @@ function WizardCarteiraPhilos() {
         fontSize: 13,
         fontWeight: 600
       }
-    }, "Pr\xF3ximo: Proposta Final")));
+    }, "Pr\xF3ximo: Proposta Final"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setCurrentStep(2),
+      style: {
+        padding: "10px 20px",
+        backgroundColor: "#f1f5f9",
+        color: "#64748b",
+        border: "1px solid #cbd5e1",
+        borderRadius: 6,
+        cursor: "pointer",
+        fontSize: 12,
+        fontWeight: 500
+      }
+    }, "\uD83D\uDCA7 Editar Liquidez")));
   };
 
   // ======================================================================
   // 2c. EXPORT FUNCTIONS
   // ======================================================================
 
+  const exportToPDF = levelsToExport => {
+    const alloc = buildAllocationStructure();
+    const totalSum = Object.keys(alloc).reduce((a, gid) => a + calculateGroupTotal(gid, alloc), 0);
+    const classeOrder = ["Renda Fixa", "Multimercado", "Renda Variável", "Alternativos", "Previdência"];
+    const groupsByClasse = {};
+    Object.keys(alloc).forEach(gid => {
+      const cl = GROUPS[gid].classe;
+      if (!groupsByClasse[cl]) groupsByClasse[cl] = [];
+      groupsByClasse[cl].push(gid);
+    });
+    const fP = v => Math.round(v) + "%";
+    const fV = v => "R$\u00a0" + Math.round(v).toLocaleString("pt-BR");
+
+    // Compute liquidity buckets
+    const bucketTotals = {
+      d1: 0,
+      d65: 0,
+      "1ano": 0,
+      "5anos": 0,
+      "5mais": 0,
+      outros: 0
+    };
+    const prevSemMarca = [];
+    Object.keys(alloc).forEach(gid => {
+      alloc[gid].assets.forEach(asset => {
+        const ad = ASSETS.find(a => a.nome === asset.nome);
+        const cotLiq = ad ? ad.cotLiq : null;
+        const bucket = getLiqBucket(asset.key, cotLiq) || "outros";
+        const val = totalAmount * asset.pct / 100;
+        bucketTotals[bucket] = (bucketTotals[bucket] || 0) + val;
+        if (!getLiqBucket(asset.key, cotLiq) && gid === "previdencia") prevSemMarca.push(asset.nome);
+      });
+    });
+    const infoBlock = `
+          <div class="info-block">
+            <div class="info-field"><span class="info-label">Cliente</span><span class="info-val">${clientName || "—"}</span></div>
+            <div class="info-field"><span class="info-label">Data</span><span class="info-val">${clientDate || "—"}</span></div>
+            <div class="info-field"><span class="info-label">Valor Total</span><span class="info-val">${fV(totalAmount)}</span></div>
+          </div>`;
+    let sections = [];
+
+    // LEVEL 5: Sugestão do Editor
+    if (levelsToExport.editor) {
+      let t = `<div class="section"><div class="sec-title">Relatório de Alocação</div>${infoBlock}<table>
+            <thead><tr><th>Grupo</th><th>Ativo</th><th class="r">%</th><th class="r">R$</th></tr></thead><tbody>`;
+      classeOrder.forEach(classe => {
+        const gids = groupsByClasse[classe];
+        if (!gids || !gids.length) return;
+        t += `<tr class="classe-row"><td colspan="4">${classe}</td></tr>`;
+        gids.forEach(gid => {
+          const gt = calculateGroupTotal(gid, alloc);
+          const gv = totalAmount * gt / 100;
+          t += `<tr class="grupo-row"><td><strong>${GROUPS[gid].nome}</strong></td><td></td><td class="r"><strong>${fP(gt)}</strong></td><td class="r"><strong>${fV(gv)}</strong></td></tr>`;
+          alloc[gid].assets.forEach(asset => {
+            if (asset.pct <= 0.001) return;
+            t += `<tr><td></td><td>${asset.nome}</td><td class="r">${fP(asset.pct)}</td><td class="r">${fV(totalAmount * asset.pct / 100)}</td></tr>`;
+          });
+        });
+      });
+      t += `<tr class="total-row"><td colspan="2">TOTAL GERAL</td><td class="r">${fP(totalSum)}</td><td class="r">${fV(totalAmount)}</td></tr>`;
+      t += `</tbody></table></div>`;
+      sections.push(t);
+    }
+
+    // LEVEL 1: Por Classes
+    if (levelsToExport.classes) {
+      let t = `<div class="section"><div class="sec-title">Por Classes</div>${infoBlock}<table>
+            <thead><tr><th>Classe</th><th class="r">%</th><th class="r">R$</th></tr></thead><tbody>`;
+      classeOrder.forEach(classe => {
+        const gids = groupsByClasse[classe];
+        if (!gids || !gids.length) return;
+        const cPct = gids.reduce((a, gid) => a + calculateGroupTotal(gid, alloc), 0);
+        t += `<tr><td>${classe}</td><td class="r">${fP(cPct)}</td><td class="r">${fV(totalAmount * cPct / 100)}</td></tr>`;
+      });
+      t += `<tr class="total-row"><td>TOTAL</td><td class="r">${fP(totalSum)}</td><td class="r">${fV(totalAmount)}</td></tr>`;
+      t += `</tbody></table></div>`;
+      sections.push(t);
+    }
+
+    // LEVEL 2: Por Grupos
+    if (levelsToExport.grupos) {
+      let t = `<div class="section"><div class="sec-title">Por Grupos</div>${infoBlock}<table>
+            <thead><tr><th>Classe</th><th>Grupo</th><th class="r">%</th><th class="r">R$</th></tr></thead><tbody>`;
+      classeOrder.forEach(classe => {
+        const gids = groupsByClasse[classe];
+        if (!gids || !gids.length) return;
+        const cPct = gids.reduce((a, gid) => a + calculateGroupTotal(gid, alloc), 0);
+        gids.forEach(gid => {
+          const gt = calculateGroupTotal(gid, alloc);
+          t += `<tr><td>${classe}</td><td>${GROUPS[gid].nome}</td><td class="r">${fP(gt)}</td><td class="r">${fV(totalAmount * gt / 100)}</td></tr>`;
+        });
+        if (showSubtotals && gids.length > 1) t += `<tr class="subtotal-row"><td colspan="2"><em>Subtotal ${classe}</em></td><td class="r"><em>${fP(cPct)}</em></td><td class="r"><em>${fV(totalAmount * cPct / 100)}</em></td></tr>`;
+      });
+      t += `<tr class="total-row"><td colspan="2">TOTAL</td><td class="r">${fP(totalSum)}</td><td class="r">${fV(totalAmount)}</td></tr>`;
+      t += `</tbody></table></div>`;
+      sections.push(t);
+    }
+
+    // LEVEL 3: Por Subgrupos
+    if (levelsToExport.subgrupos) {
+      let t = `<div class="section"><div class="sec-title">Por Subgrupos</div>${infoBlock}<table>
+            <thead><tr><th>Classe</th><th>Grupo</th><th>Subgrupo</th><th class="r">%</th><th class="r">R$</th></tr></thead><tbody>`;
+      classeOrder.forEach(classe => {
+        const gids = groupsByClasse[classe];
+        if (!gids || !gids.length) return;
+        gids.forEach(gid => {
+          const gt = calculateGroupTotal(gid, alloc);
+          const subgroupMap = {};
+          alloc[gid].assets.forEach(asset => {
+            const sgId = asset.subgrupo;
+            const sgName = SUBGROUPS[gid]?.find(sg => sg.id === sgId)?.nome || customSubgroups[sgId]?.nome || sgId || "—";
+            if (!subgroupMap[sgName]) subgroupMap[sgName] = 0;
+            subgroupMap[sgName] += asset.pct;
+          });
+          Object.entries(subgroupMap).forEach(([sgName, pct]) => {
+            t += `<tr><td>${classe}</td><td>${GROUPS[gid].nome}</td><td>${sgName}</td><td class="r">${fP(pct)}</td><td class="r">${fV(totalAmount * pct / 100)}</td></tr>`;
+          });
+          if (showSubtotals) t += `<tr class="subtotal-row"><td colspan="3"><em>Subtotal ${GROUPS[gid].nome}</em></td><td class="r"><em>${fP(gt)}</em></td><td class="r"><em>${fV(totalAmount * gt / 100)}</em></td></tr>`;
+        });
+      });
+      t += `<tr class="total-row"><td colspan="3">TOTAL</td><td class="r">${fP(totalSum)}</td><td class="r">${fV(totalAmount)}</td></tr>`;
+      t += `</tbody></table></div>`;
+      sections.push(t);
+    }
+
+    // LEVEL 4: Detalhado
+    if (levelsToExport.detalhado) {
+      let t = `<div class="section"><div class="sec-title">Detalhado</div>${infoBlock}<table>
+            <thead><tr><th>Classe</th><th>Grupo</th><th>Subgrupo</th><th>Ativo</th><th class="r">%</th><th class="r">R$</th></tr></thead><tbody>`;
+      classeOrder.forEach(classe => {
+        const gids = groupsByClasse[classe];
+        if (!gids || !gids.length) return;
+        gids.forEach(gid => {
+          const gt = calculateGroupTotal(gid, alloc);
+          alloc[gid].assets.forEach(asset => {
+            if (asset.pct <= 0.001) return;
+            const sgName = SUBGROUPS[gid]?.find(sg => sg.id === asset.subgrupo)?.nome || customSubgroups[asset.subgrupo]?.nome || asset.subgrupo || "";
+            t += `<tr><td>${classe}</td><td>${GROUPS[gid].nome}</td><td>${sgName}</td><td>${asset.nome}</td><td class="r">${fP(asset.pct)}</td><td class="r">${fV(totalAmount * asset.pct / 100)}</td></tr>`;
+          });
+          if (showSubtotals) t += `<tr class="subtotal-row"><td colspan="4"><em>Subtotal ${GROUPS[gid].nome}</em></td><td class="r"><em>${fP(gt)}</em></td><td class="r"><em>${fV(totalAmount * gt / 100)}</em></td></tr>`;
+        });
+      });
+      t += `<tr class="total-row"><td colspan="4">TOTAL</td><td class="r">${fP(totalSum)}</td><td class="r">${fV(totalAmount)}</td></tr>`;
+      t += `</tbody></table></div>`;
+      sections.push(t);
+    }
+
+    // LEVEL liq: Liquidez
+    if (levelsToExport.liq) {
+      const hasMetas = liqOptIn === true;
+      let t = `<div class="section"><div class="sec-title">Análise de Liquidez</div>${infoBlock}<table>
+            <thead><tr><th>Faixa</th><th class="r">R$ Alocado</th><th class="r">% Carteira</th>${hasMetas ? '<th class="r">Meta</th><th class="r">Status</th>' : ''}</tr></thead><tbody>`;
+      LIQ_BUCKETS.forEach(b => {
+        const val = bucketTotals[b.key] || 0;
+        if (val <= 0.01) return;
+        const pct = totalAmount > 0 ? val / totalAmount * 100 : 0;
+        const meta = hasMetas ? parseFloat(liqTargets[b.key]) || 0 : null;
+        const ok = meta !== null ? pct >= meta - 0.05 : null;
+        t += `<tr><td>${b.label}</td><td class="r">${fV(val)}</td><td class="r">${fP(pct)}</td>`;
+        if (hasMetas) t += `<td class="r">${meta > 0 ? fP(meta) : "—"}</td><td class="r" style="color:${ok ? "#059669" : "#dc2626"};font-weight:700;">${meta > 0 ? ok ? "✓ OK" : "▼ falta " + fP(meta - pct) : "—"}</td>`;
+        t += `</tr>`;
+      });
+      if (bucketTotals.outros > 0.01) {
+        const pct = totalAmount > 0 ? bucketTotals.outros / totalAmount * 100 : 0;
+        t += `<tr style="background:#fffbeb;color:#92400e;"><td>Outros *</td><td class="r">${fV(bucketTotals.outros)}</td><td class="r">${fP(pct)}</td>${hasMetas ? '<td></td><td></td>' : ''}</tr>`;
+      }
+      t += `<tr class="total-row"><td>TOTAL</td><td class="r">${fV(totalAmount)}</td><td class="r">100%</td>${hasMetas ? '<td></td><td></td>' : ''}</tr>`;
+      t += `</tbody></table>`;
+      if (bucketTotals.outros > 0.01 && prevSemMarca.length > 0) t += `<p style="font-size:8pt;color:#92400e;margin-top:8px;">* Fundos de previdência sem liquidez definida: ${prevSemMarca.join(", ")}.</p>`;
+      t += `</div>`;
+      sections.push(t);
+    }
+    const advisorHeader = advisorName ? `
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #e2e8f0;">
+            <div>
+              <div style="font-size:8pt;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Assessor de Investimentos</div>
+              <div style="font-size:10pt;color:#1e3a5f;font-weight:700;">${advisorName}</div>
+              ${advisorPhone ? `<div style="font-size:8pt;color:#475569;">📞 ${advisorPhone}</div>` : ""}
+              ${advisorEmail ? `<div style="font-size:8pt;color:#475569;">✉ ${advisorEmail}</div>` : ""}
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:9pt;font-weight:700;color:#1e3a5f;">Philos Invest &amp; Solutions</div>
+              <div style="font-size:7.5pt;color:#64748b;">BTG Pactual &nbsp;|&nbsp; Base: Dez/25</div>
+            </div>
+          </div>` : `<div style="text-align:right;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid #e2e8f0;"><div style="font-size:9pt;font-weight:700;color:#1e3a5f;">Philos Invest &amp; Solutions</div><div style="font-size:7.5pt;color:#64748b;">BTG Pactual &nbsp;|&nbsp; Base: Dez/25</div></div>`;
+
+    // Each section gets page-break-before (except first)
+    const sectionsWithBreaks = sections.map((s, i) => i === 0 ? s : s.replace('<div class="section">', '<div class="section" style="page-break-before:always;">'));
+    const pdfHTML = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+<style>
+  @page { size: A4 portrait; margin: 15mm 16mm 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 9pt; color: #1e293b; margin: 0; }
+  h1.report-title { font-size: 13pt; font-weight: 700; text-align: center; color: #1e3a5f; margin: 0 0 4px 0; }
+  .section { margin-bottom: 20px; }
+  .sec-title { font-size: 10pt; font-weight: 700; color: #1e3a5f; border-bottom: 2px solid #1e3a5f; padding-bottom: 3px; margin-bottom: 8px; }
+  .info-block { margin-bottom: 8px; display:flex; gap:20px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:5px; padding:6px 12px; }
+  .info-field { display:flex; flex-direction:column; }
+  .info-label { font-size:6.5pt; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; }
+  .info-val { font-size:8.5pt; color:#1e293b; font-weight:700; }
+  table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+  th { background: #1e3a5f; color: #fff; font-weight: 700; padding: 5px 7px; text-align: left; border: 1px solid #1e3a5f; }
+  th.r, td.r { text-align: right; }
+  td { padding: 4px 7px; border: 1px solid #cbd5e1; color: #1e293b; }
+  tr:nth-child(even) td { background: #f8fafc; }
+  .classe-row td { background: #dbeafe; color: #1e3a5f; font-weight: 700; }
+  .grupo-row td { background: #eff6ff; }
+  .subtotal-row td { background: #e8f0f8; font-style: italic; }
+  .total-row td { background: #1e3a5f; color: #fff; font-weight: 700; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+</style></head><body>
+${advisorHeader}
+<h1 class="report-title">Proposta de Alocação de Investimentos</h1>
+<p style="font-size:7.5pt;text-align:center;color:#64748b;margin:2px 0 14px 0;">${clientName || "—"} &nbsp;|&nbsp; ${clientDate || "—"} &nbsp;|&nbsp; ${fV(totalAmount)}</p>
+${sectionsWithBreaks.join("\n")}
+</body></html>`;
+    const win = window.open("", "_blank");
+    if (!win) {
+      alert("Permita pop-ups para gerar o PDF.");
+      return;
+    }
+    win.document.write(pdfHTML);
+    win.document.close();
+    setTimeout(() => win.print(), 400);
+  };
   const saveProposalJSON = () => {
     const state = {
       profileKey,
@@ -2584,7 +3456,14 @@ function WizardCarteiraPhilos() {
       customSubgroups,
       flatView,
       proposalDetailLevel,
-      isQualified
+      isQualified,
+      liqTargets,
+      customAssetLiq,
+      liqOptIn,
+      advisorName,
+      advisorPhone,
+      advisorEmail,
+      showSubtotals
     };
     const json = JSON.stringify(state, null, 2);
     const blob = new Blob([json], {
@@ -2626,7 +3505,14 @@ function WizardCarteiraPhilos() {
           if (state.flatView) setFlatView(state.flatView);
           if (state.proposalDetailLevel !== undefined) setProposalDetailLevel(state.proposalDetailLevel);
           if (state.isQualified !== undefined) setIsQualified(state.isQualified);
-          setCurrentStep(4);
+          if (state.liqTargets) setLiqTargets(state.liqTargets);
+          if (state.customAssetLiq) setCustomAssetLiq(state.customAssetLiq);
+          if (state.liqOptIn !== undefined) setLiqOptIn(state.liqOptIn);
+          if (state.advisorName !== undefined) setAdvisorName(state.advisorName);
+          if (state.advisorPhone !== undefined) setAdvisorPhone(state.advisorPhone);
+          if (state.advisorEmail !== undefined) setAdvisorEmail(state.advisorEmail);
+          if (state.showSubtotals !== undefined) setShowSubtotals(state.showSubtotals);
+          setCurrentStep(5);
         } catch (err) {
           alert("Erro ao carregar arquivo: " + err.message);
         }
@@ -2638,188 +3524,174 @@ function WizardCarteiraPhilos() {
   const exportToExcel = () => {
     const alloc = buildAllocationStructure();
     const totalSum = Object.keys(alloc).reduce((a, gid) => a + calculateGroupTotal(gid, alloc), 0);
-    const classeOrder = ["Renda Fixa", "Multimercado", "Renda Variavel", "Alternativos"];
+    const classeOrder = ["Renda Fixa", "Multimercado", "Renda Variável", "Alternativos", "Previdência"];
     const groupsByClasse = {};
     Object.keys(alloc).forEach(gid => {
-      const classe = GROUPS[gid].classe;
-      if (!groupsByClasse[classe]) groupsByClasse[classe] = [];
-      groupsByClasse[classe].push(gid);
+      const cl = GROUPS[gid].classe;
+      if (!groupsByClasse[cl]) groupsByClasse[cl] = [];
+      groupsByClasse[cl].push(gid);
     });
-    const fmtPct = v => (v / 100).toFixed(4);
-    const fmtBRL = v => v.toFixed(2);
-    const border = "border: 1px solid #CBD5E1;";
-    const thickB = "border: 1px solid #CBD5E1; border-bottom: 2px solid #1E3A5F;";
+    const bd = "border:1px solid #CBD5E1;";
+    const fP = v => Math.round(v) + "%";
+    const fV = v => "R$ " + Math.round(v).toLocaleString("pt-BR");
+    const colHdr = headers => {
+      let r = `<tr style="background:#334155;color:#fff;font-weight:bold;font-size:11px;">`;
+      headers.forEach(h => {
+        r += `<td style="padding:8px;${bd}color:#fff;">${h}</td>`;
+      });
+      return r + `</tr>`;
+    };
+    const infoRows = ncols => {
+      let r = `<tr style="background:#F1F5F9;"><td style="font-weight:bold;${bd}">Cliente:</td><td style="${bd}">${clientName || "—"}</td><td style="font-weight:bold;${bd}">Data:</td><td colspan="${ncols - 3}" style="${bd}">${clientDate || "—"}</td></tr>`;
+      r += `<tr style="background:#F1F5F9;"><td style="font-weight:bold;${bd}">Valor Total:</td><td colspan="${ncols - 1}" style="font-weight:bold;color:#059669;${bd}">${fV(totalAmount)}</td></tr>`;
+      r += `<tr><td colspan="${ncols}"></td></tr>`;
+      return r;
+    };
+    const totalRow = (ncols, label) => `<tr style="background:#1E3A5F;color:#fff;font-weight:bold;font-size:11px;"><td style="padding:8px;" colspan="${ncols - 2}">${label}</td><td style="padding:8px;text-align:right;">${fP(totalSum)}</td><td style="padding:8px;text-align:right;">${fV(totalAmount)}</td></tr>`;
 
-    // ===== SHEET 1: Proposta Detalhada =====
-    let s1 = `<table>`;
-    s1 += `<tr><td colspan="6" style="background:#1E3A5F;color:#fff;font-weight:bold;font-size:14px;text-align:center;padding:12px;font-family:Arial;">PROPOSTA DE ALOCACAO DE INVESTIMENTOS</td></tr>`;
-    s1 += `<tr style="background:#F1F5F9;"><td style="font-weight:bold;${border}">Cliente:</td><td style="${border}">${clientName || "—"}</td><td style="${border}"></td><td style="font-weight:bold;${border}">Data:</td><td style="${border}">${clientDate || new Date().toISOString().split("T")[0]}</td><td style="${border}"></td></tr>`;
-    s1 += `<tr style="background:#F1F5F9;"><td style="font-weight:bold;${border}">Valor Total:</td><td style="font-weight:bold;color:#059669;${border}">${fmtBRL(totalAmount)}</td><td colspan="4" style="${border}"></td></tr>`;
-    s1 += `<tr><td colspan="6"></td></tr>`;
-    s1 += `<tr style="background:#1E3A5F;color:#fff;font-weight:bold;font-size:11px;text-align:center;font-family:Arial;">`;
-    ["Classe", "Grupo", "Subgrupo", "Ativo", "%", "R$"].forEach(h => {
-      s1 += `<td class="t" style="padding:8px;${border}color:#fff;">${h}</td>`;
-    });
-    s1 += `</tr>`;
+    // ===== SHEET 1: Sugestão do Editor =====
+    let s1 = `<table><tr><td colspan="4" style="background:#1E3A5F;color:#fff;font-weight:bold;font-size:13px;text-align:center;padding:10px;">SUGESTÃO DO EDITOR</td></tr>`;
+    s1 += infoRows(4) + colHdr(["Grupo", "Ativo", "%", "R$"]);
     classeOrder.forEach(classe => {
-      const groupIds = groupsByClasse[classe];
-      if (!groupIds || groupIds.length === 0) return;
-      groupIds.forEach(groupId => {
-        const groupData = alloc[groupId];
-        const groupTotal = calculateGroupTotal(groupId, alloc);
-        const groupValue = totalAmount * groupTotal / 100;
-        let rowIdx = 0;
-        groupData.assets.forEach(asset => {
+      const gids = groupsByClasse[classe];
+      if (!gids || !gids.length) return;
+      s1 += `<tr style="background:#2D4F73;color:#fff;font-weight:bold;font-size:10px;"><td colspan="4" style="${bd}padding:6px;">${classe}</td></tr>`;
+      gids.forEach(gid => {
+        const gt = calculateGroupTotal(gid, alloc);
+        const gv = totalAmount * gt / 100;
+        s1 += `<tr style="background:#D6E2ED;font-weight:bold;font-size:10px;"><td style="${bd}padding:6px;">${GROUPS[gid].nome}</td><td style="${bd}"></td><td style="${bd}padding:6px;text-align:right;">${fP(gt)}</td><td style="${bd}padding:6px;text-align:right;">${fV(gv)}</td></tr>`;
+        alloc[gid].assets.forEach(asset => {
           if (asset.pct <= 0.001) return;
-          const assetValue = totalAmount * asset.pct / 100;
-          const sgName = SUBGROUPS[groupId]?.find(sg => sg.id === asset.subgrupo)?.nome || customSubgroups[asset.subgrupo]?.nome || asset.subgrupo || "";
-          const bg = rowIdx % 2 === 0 ? "#fff" : "#F8FAFC";
-          s1 += `<tr style="background:${bg};font-size:10px;font-family:Arial;color:#334155;">`;
-          s1 += `<td class="t" style="${border}padding:6px;">${classe}</td>`;
-          s1 += `<td class="t" style="${border}padding:6px;">${GROUPS[groupId].nome}</td>`;
-          s1 += `<td class="t" style="${border}padding:6px;">${sgName}</td>`;
-          s1 += `<td class="t" style="${border}padding:6px;">${asset.nome}</td>`;
-          s1 += `<td class="p" style="${border}padding:6px;text-align:right;">${fmtPct(asset.pct)}</td>`;
-          s1 += `<td class="v" style="${border}padding:6px;text-align:right;">${fmtBRL(assetValue)}</td>`;
-          s1 += `</tr>`;
-          rowIdx++;
+          s1 += `<tr style="background:#fff;font-size:10px;color:#334155;"><td style="${bd}padding:6px;"></td><td style="${bd}padding:6px;">${asset.nome}</td><td style="${bd}padding:6px;text-align:right;">${fP(asset.pct)}</td><td style="${bd}padding:6px;text-align:right;">${fV(totalAmount * asset.pct / 100)}</td></tr>`;
         });
-        s1 += `<tr style="background:#DBEAFE;font-weight:bold;font-size:10px;font-family:Arial;color:#1E293B;">`;
-        s1 += `<td style="${thickB}padding:6px;"></td>`;
-        s1 += `<td style="${thickB}padding:6px;">Subtotal ${GROUPS[groupId].nome}</td>`;
-        s1 += `<td style="${thickB}padding:6px;"></td><td style="${thickB}padding:6px;"></td>`;
-        s1 += `<td class="p" style="${thickB}padding:6px;text-align:right;">${fmtPct(groupTotal)}</td>`;
-        s1 += `<td class="v" style="${thickB}padding:6px;text-align:right;">${fmtBRL(groupValue)}</td>`;
-        s1 += `</tr>`;
       });
     });
-    s1 += `<tr style="background:#1E3A5F;color:#fff;font-weight:bold;font-size:11px;font-family:Arial;">`;
-    s1 += `<td style="padding:8px;" colspan="4">TOTAL GERAL</td>`;
-    s1 += `<td class="p" style="padding:8px;text-align:right;">${fmtPct(totalSum)}</td>`;
-    s1 += `<td class="v" style="padding:8px;text-align:right;">${fmtBRL(totalAmount)}</td>`;
-    s1 += `</tr></table>`;
+    s1 += totalRow(4, "TOTAL GERAL") + `</table>`;
 
-    // ===== SHEET 2: Resumo por Grupo =====
-    let s2 = `<table>`;
-    s2 += `<tr><td colspan="4" style="background:#1E3A5F;color:#fff;font-weight:bold;font-size:13px;text-align:center;padding:10px;font-family:Arial;">RESUMO POR GRUPO</td></tr>`;
-    s2 += `<tr style="background:#334155;color:#fff;font-weight:bold;font-size:11px;text-align:center;font-family:Arial;">`;
-    ["Classe", "Grupo", "%", "R$"].forEach(h => {
-      s2 += `<td style="padding:8px;${border}color:#fff;">${h}</td>`;
-    });
-    s2 += `</tr>`;
-    let rIdx = 0;
+    // ===== SHEET 2: Por Classes =====
+    let s2 = `<table><tr><td colspan="3" style="background:#1E3A5F;color:#fff;font-weight:bold;font-size:13px;text-align:center;padding:10px;">POR CLASSES</td></tr>`;
+    s2 += infoRows(3) + colHdr(["Classe", "%", "R$"]);
     classeOrder.forEach(classe => {
-      const groupIds = groupsByClasse[classe];
-      if (!groupIds || groupIds.length === 0) return;
-      let cPct = 0,
-        cVal = 0;
-      groupIds.forEach(groupId => {
-        const gt = calculateGroupTotal(groupId, alloc);
-        const gv = totalAmount * gt / 100;
-        cPct += gt;
-        cVal += gv;
-        const bg = rIdx % 2 === 0 ? "#fff" : "#F8FAFC";
-        s2 += `<tr style="background:${bg};font-size:10px;font-family:Arial;color:#334155;">`;
-        s2 += `<td class="t" style="${border}padding:6px;">${classe}</td>`;
-        s2 += `<td class="t" style="${border}padding:6px;">${GROUPS[groupId].nome}</td>`;
-        s2 += `<td class="p" style="${border}padding:6px;text-align:right;">${fmtPct(gt)}</td>`;
-        s2 += `<td class="v" style="${border}padding:6px;text-align:right;">${fmtBRL(gv)}</td>`;
-        s2 += `</tr>`;
-        rIdx++;
-      });
-      s2 += `<tr style="background:#E2E8F0;font-weight:bold;font-size:10px;font-family:Arial;color:#1E293B;">`;
-      s2 += `<td style="${thickB}padding:6px;" colspan="2">Subtotal ${classe}</td>`;
-      s2 += `<td class="p" style="${thickB}padding:6px;text-align:right;">${fmtPct(cPct)}</td>`;
-      s2 += `<td class="v" style="${thickB}padding:6px;text-align:right;">${fmtBRL(cVal)}</td>`;
-      s2 += `</tr>`;
+      const gids = groupsByClasse[classe];
+      if (!gids || !gids.length) return;
+      const cPct = gids.reduce((a, gid) => a + calculateGroupTotal(gid, alloc), 0);
+      s2 += `<tr style="background:#fff;font-size:10px;color:#334155;"><td style="${bd}padding:6px;">${classe}</td><td style="${bd}padding:6px;text-align:right;">${fP(cPct)}</td><td style="${bd}padding:6px;text-align:right;">${fV(totalAmount * cPct / 100)}</td></tr>`;
     });
-    s2 += `<tr style="background:#1E3A5F;color:#fff;font-weight:bold;font-size:11px;font-family:Arial;">`;
-    s2 += `<td style="padding:8px;" colspan="2">TOTAL</td>`;
-    s2 += `<td class="p" style="padding:8px;text-align:right;">${fmtPct(totalSum)}</td>`;
-    s2 += `<td class="v" style="padding:8px;text-align:right;">${fmtBRL(totalAmount)}</td>`;
-    s2 += `</tr></table>`;
+    s2 += `<tr style="background:#1E3A5F;color:#fff;font-weight:bold;"><td style="padding:8px;">TOTAL</td><td style="padding:8px;text-align:right;">${fP(totalSum)}</td><td style="padding:8px;text-align:right;">${fV(totalAmount)}</td></tr></table>`;
 
-    // ===== SHEET 3: Resumo por Subgrupo =====
-    let s3 = `<table>`;
-    s3 += `<tr><td colspan="5" style="background:#1E3A5F;color:#fff;font-weight:bold;font-size:13px;text-align:center;padding:10px;font-family:Arial;">RESUMO POR SUBGRUPO</td></tr>`;
-    s3 += `<tr style="background:#334155;color:#fff;font-weight:bold;font-size:11px;text-align:center;font-family:Arial;">`;
-    ["Classe", "Grupo", "Subgrupo", "%", "R$"].forEach(h => {
-      s3 += `<td style="padding:8px;${border}color:#fff;">${h}</td>`;
-    });
-    s3 += `</tr>`;
-    rIdx = 0;
+    // ===== SHEET 3: Por Grupos =====
+    let s3 = `<table><tr><td colspan="4" style="background:#1E3A5F;color:#fff;font-weight:bold;font-size:13px;text-align:center;padding:10px;">POR GRUPOS</td></tr>`;
+    s3 += infoRows(4) + colHdr(["Classe", "Grupo", "%", "R$"]);
     classeOrder.forEach(classe => {
-      const groupIds = groupsByClasse[classe];
-      if (!groupIds || groupIds.length === 0) return;
-      groupIds.forEach(groupId => {
-        const groupData = alloc[groupId];
-        const subgroupMap = {};
-        groupData.assets.forEach(asset => {
-          const sgId = asset.subgrupo;
-          const sgName = SUBGROUPS[groupId]?.find(sg => sg.id === sgId)?.nome || customSubgroups[sgId]?.nome || sgId || "—";
-          if (!subgroupMap[sgName]) subgroupMap[sgName] = 0;
-          subgroupMap[sgName] += asset.pct;
+      const gids = groupsByClasse[classe];
+      if (!gids || !gids.length) return;
+      const cPct = gids.reduce((a, gid) => a + calculateGroupTotal(gid, alloc), 0);
+      gids.forEach(gid => {
+        const gt = calculateGroupTotal(gid, alloc);
+        s3 += `<tr style="background:#fff;font-size:10px;color:#334155;"><td style="${bd}padding:6px;">${classe}</td><td style="${bd}padding:6px;">${GROUPS[gid].nome}</td><td style="${bd}padding:6px;text-align:right;">${fP(gt)}</td><td style="${bd}padding:6px;text-align:right;">${fV(totalAmount * gt / 100)}</td></tr>`;
+      });
+      if (showSubtotals && gids.length > 1) s3 += `<tr style="background:#E2E8F0;font-weight:bold;font-size:10px;"><td colspan="2" style="${bd}padding:6px;">Subtotal ${classe}</td><td style="${bd}padding:6px;text-align:right;">${fP(cPct)}</td><td style="${bd}padding:6px;text-align:right;">${fV(totalAmount * cPct / 100)}</td></tr>`;
+    });
+    s3 += totalRow(4, "TOTAL") + `</table>`;
+
+    // ===== SHEET 4: Por Subgrupos =====
+    let s4 = `<table><tr><td colspan="5" style="background:#1E3A5F;color:#fff;font-weight:bold;font-size:13px;text-align:center;padding:10px;">POR SUBGRUPOS</td></tr>`;
+    s4 += infoRows(5) + colHdr(["Classe", "Grupo", "Subgrupo", "%", "R$"]);
+    classeOrder.forEach(classe => {
+      const gids = groupsByClasse[classe];
+      if (!gids || !gids.length) return;
+      gids.forEach(gid => {
+        const gt = calculateGroupTotal(gid, alloc);
+        const sgMap = {};
+        alloc[gid].assets.forEach(asset => {
+          const sgName = SUBGROUPS[gid]?.find(sg => sg.id === asset.subgrupo)?.nome || customSubgroups[asset.subgrupo]?.nome || asset.subgrupo || "—";
+          if (!sgMap[sgName]) sgMap[sgName] = 0;
+          sgMap[sgName] += asset.pct;
         });
-        Object.entries(subgroupMap).forEach(([sgName, pct]) => {
-          const value = totalAmount * pct / 100;
-          const bg = rIdx % 2 === 0 ? "#fff" : "#F8FAFC";
-          s3 += `<tr style="background:${bg};font-size:10px;font-family:Arial;color:#334155;">`;
-          s3 += `<td class="t" style="${border}padding:6px;">${classe}</td>`;
-          s3 += `<td class="t" style="${border}padding:6px;">${GROUPS[groupId].nome}</td>`;
-          s3 += `<td class="t" style="${border}padding:6px;">${sgName}</td>`;
-          s3 += `<td class="p" style="${border}padding:6px;text-align:right;">${fmtPct(pct)}</td>`;
-          s3 += `<td class="v" style="${border}padding:6px;text-align:right;">${fmtBRL(value)}</td>`;
-          s3 += `</tr>`;
-          rIdx++;
+        Object.entries(sgMap).forEach(([sgName, pct]) => {
+          s4 += `<tr style="background:#fff;font-size:10px;color:#334155;"><td style="${bd}padding:6px;">${classe}</td><td style="${bd}padding:6px;">${GROUPS[gid].nome}</td><td style="${bd}padding:6px;">${sgName}</td><td style="${bd}padding:6px;text-align:right;">${fP(pct)}</td><td style="${bd}padding:6px;text-align:right;">${fV(totalAmount * pct / 100)}</td></tr>`;
         });
-        const gt = calculateGroupTotal(groupId, alloc);
-        const gv = totalAmount * gt / 100;
-        s3 += `<tr style="background:#DBEAFE;font-weight:bold;font-size:10px;font-family:Arial;color:#1E293B;">`;
-        s3 += `<td style="${thickB}padding:6px;"></td>`;
-        s3 += `<td style="${thickB}padding:6px;" colspan="2">Subtotal ${GROUPS[groupId].nome}</td>`;
-        s3 += `<td class="p" style="${thickB}padding:6px;text-align:right;">${fmtPct(gt)}</td>`;
-        s3 += `<td class="v" style="${thickB}padding:6px;text-align:right;">${fmtBRL(gv)}</td>`;
-        s3 += `</tr>`;
+        if (showSubtotals) s4 += `<tr style="background:#DBEAFE;font-weight:bold;font-size:10px;"><td colspan="3" style="${bd}padding:6px;">Subtotal ${GROUPS[gid].nome}</td><td style="${bd}padding:6px;text-align:right;">${fP(gt)}</td><td style="${bd}padding:6px;text-align:right;">${fV(totalAmount * gt / 100)}</td></tr>`;
       });
     });
-    s3 += `<tr style="background:#1E3A5F;color:#fff;font-weight:bold;font-size:11px;font-family:Arial;">`;
-    s3 += `<td style="padding:8px;" colspan="3">TOTAL</td>`;
-    s3 += `<td class="p" style="padding:8px;text-align:right;">${fmtPct(totalSum)}</td>`;
-    s3 += `<td class="v" style="padding:8px;text-align:right;">${fmtBRL(totalAmount)}</td>`;
-    s3 += `</tr></table>`;
-    const htmlContent = `
-<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-<head>
-<meta charset="UTF-8">
-<!--[if gte mso 9]><xml>
-<x:ExcelWorkbook><x:ExcelWorksheets>
-<x:ExcelWorksheet><x:Name>Proposta Detalhada</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>
-<x:ExcelWorksheet><x:Name>Resumo por Grupo</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>
-<x:ExcelWorksheet><x:Name>Resumo por Subgrupo</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>
-</x:ExcelWorksheets></x:ExcelWorkbook>
-</xml><![endif]-->
-<style>
-  .t { mso-number-format:\\@; }
-  .p { mso-number-format:"0.00\\%"; }
-  .v { mso-number-format:"\"R$ \"#\\,##0.00"; }
-</style>
-</head>
-<body>
-<div id="Proposta_Detalhada">
-${s1}
-</div>
-<br style='page-break-before:always'>
-<div id="Resumo_por_Grupo">
-${s2}
-</div>
-<br style='page-break-before:always'>
-<div id="Resumo_por_Subgrupo">
-${s3}
-</div>
-</body>
-</html>`;
+    s4 += totalRow(5, "TOTAL") + `</table>`;
+
+    // ===== SHEET 5: Detalhado =====
+    let s5 = `<table><tr><td colspan="6" style="background:#1E3A5F;color:#fff;font-weight:bold;font-size:13px;text-align:center;padding:10px;">DETALHADO</td></tr>`;
+    s5 += infoRows(6) + colHdr(["Classe", "Grupo", "Subgrupo", "Ativo", "%", "R$"]);
+    classeOrder.forEach(classe => {
+      const gids = groupsByClasse[classe];
+      if (!gids || !gids.length) return;
+      gids.forEach(gid => {
+        const gt = calculateGroupTotal(gid, alloc);
+        let ri = 0;
+        alloc[gid].assets.forEach(asset => {
+          if (asset.pct <= 0.001) return;
+          const sgName = SUBGROUPS[gid]?.find(sg => sg.id === asset.subgrupo)?.nome || customSubgroups[asset.subgrupo]?.nome || asset.subgrupo || "";
+          const bg = ri % 2 === 0 ? "#fff" : "#F8FAFC";
+          ri++;
+          s5 += `<tr style="background:${bg};font-size:10px;color:#334155;"><td style="${bd}padding:6px;">${classe}</td><td style="${bd}padding:6px;">${GROUPS[gid].nome}</td><td style="${bd}padding:6px;">${sgName}</td><td style="${bd}padding:6px;">${asset.nome}</td><td style="${bd}padding:6px;text-align:right;">${fP(asset.pct)}</td><td style="${bd}padding:6px;text-align:right;">${fV(totalAmount * asset.pct / 100)}</td></tr>`;
+        });
+        if (showSubtotals) s5 += `<tr style="background:#DBEAFE;font-weight:bold;font-size:10px;"><td colspan="4" style="${bd}padding:6px;">Subtotal ${GROUPS[gid].nome}</td><td style="${bd}padding:6px;text-align:right;">${fP(gt)}</td><td style="${bd}padding:6px;text-align:right;">${fV(totalAmount * gt / 100)}</td></tr>`;
+      });
+    });
+    s5 += totalRow(6, "TOTAL GERAL") + `</table>`;
+
+    // ===== SHEET 6: Liquidez =====
+    const bucketTotalsXl = {
+      d1: 0,
+      d65: 0,
+      "1ano": 0,
+      "5anos": 0,
+      "5mais": 0,
+      outros: 0
+    };
+    Object.keys(alloc).forEach(gid => {
+      alloc[gid].assets.forEach(asset => {
+        const ad = ASSETS.find(a => a.nome === asset.nome);
+        const bucket = getLiqBucket(asset.key, ad ? ad.cotLiq : null) || "outros";
+        bucketTotalsXl[bucket] = (bucketTotalsXl[bucket] || 0) + totalAmount * asset.pct / 100;
+      });
+    });
+    const hasMetas = liqOptIn === true;
+    const liqCols = hasMetas ? ["Faixa", "R$ Alocado", "% Carteira", "Meta", "Status"] : ["Faixa", "R$ Alocado", "% Carteira"];
+    let s6 = `<table><tr><td colspan="${liqCols.length}" style="background:#1E3A5F;color:#fff;font-weight:bold;font-size:13px;text-align:center;padding:10px;">LIQUIDEZ</td></tr>`;
+    s6 += infoRows(liqCols.length) + colHdr(liqCols);
+    LIQ_BUCKETS.forEach(b => {
+      const val = bucketTotalsXl[b.key] || 0;
+      if (val <= 0.01) return;
+      const pct = totalAmount > 0 ? val / totalAmount * 100 : 0;
+      const meta = hasMetas ? parseFloat(liqTargets[b.key]) || 0 : null;
+      const ok = meta !== null ? pct >= meta - 0.05 : null;
+      s6 += `<tr style="background:#fff;font-size:10px;color:#334155;"><td style="${bd}padding:6px;">${b.label}</td><td style="${bd}padding:6px;text-align:right;">${fV(val)}</td><td style="${bd}padding:6px;text-align:right;">${fP(pct)}</td>`;
+      if (hasMetas) s6 += `<td style="${bd}padding:6px;text-align:right;">${meta > 0 ? fP(meta) : "—"}</td><td style="${bd}padding:6px;font-weight:700;color:${ok ? "#059669" : "#dc2626"};">${meta > 0 ? ok ? "✓ OK" : "▼ falta " + fP(meta - pct) : "—"}</td>`;
+      s6 += `</tr>`;
+    });
+    if (bucketTotalsXl.outros > 0.01) {
+      const pct = totalAmount > 0 ? bucketTotalsXl.outros / totalAmount * 100 : 0;
+      s6 += `<tr style="background:#FFFBEB;font-size:10px;color:#92400E;"><td style="${bd}padding:6px;">Outros *</td><td style="${bd}padding:6px;text-align:right;">${fV(bucketTotalsXl.outros)}</td><td style="${bd}padding:6px;text-align:right;">${fP(pct)}</td>${hasMetas ? `<td style="${bd}"></td><td style="${bd}"></td>` : ""}</tr>`;
+    }
+    s6 += `<tr style="background:#1E3A5F;color:#fff;font-weight:bold;"><td style="padding:8px;">TOTAL</td><td style="padding:8px;text-align:right;">${fV(totalAmount)}</td><td style="padding:8px;text-align:right;">100%</td>${hasMetas ? `<td></td><td></td>` : ""}</tr></table>`;
+    const htmlContent = `\uFEFF<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8">
+<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets>
+<x:ExcelWorksheet><x:Name>Editor</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>
+<x:ExcelWorksheet><x:Name>Por Classes</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>
+<x:ExcelWorksheet><x:Name>Por Grupos</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>
+<x:ExcelWorksheet><x:Name>Por Subgrupos</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>
+<x:ExcelWorksheet><x:Name>Detalhado</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>
+<x:ExcelWorksheet><x:Name>Liquidez</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet>
+</x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->
+</head><body>
+<div id="Editor">${s1}</div><br style='page-break-before:always'>
+<div id="Por_Classes">${s2}</div><br style='page-break-before:always'>
+<div id="Por_Grupos">${s3}</div><br style='page-break-before:always'>
+<div id="Por_Subgrupos">${s4}</div><br style='page-break-before:always'>
+<div id="Detalhado">${s5}</div><br style='page-break-before:always'>
+<div id="Liquidez">${s6}</div>
+</body></html>`;
     const dateStr = clientDate || new Date().toISOString().split("T")[0];
-    const fileName = `Proposta_Alocacao_${clientName || "Cliente"}_${dateStr}.xls`;
+    const fileName = `Proposta_${clientName || "Cliente"}_${dateStr}.xls`;
     const blob = new Blob([htmlContent], {
       type: "application/vnd.ms-excel;charset=utf-8"
     });
@@ -2855,37 +3727,100 @@ ${s3}
     }, "Proposta de Aloca\xE7\xE3o"), /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
-        gap: 24,
-        marginBottom: 24,
-        fontSize: 13,
-        color: "#475569",
-        backgroundColor: "#f8fafc",
-        padding: "12px 16px",
-        borderRadius: 8,
-        border: "1px solid #e2e8f0"
+        gap: 16,
+        marginBottom: 20,
+        flexWrap: "wrap"
       }
-    }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("strong", null, "Cliente:"), " ", clientName || "—"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("strong", null, "Data:"), " ", clientDate || "—"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("strong", null, "Valor Total:"), " R$ ", totalAmount.toLocaleString("pt-BR", {
-      maximumFractionDigits: 0
-    }))), /*#__PURE__*/React.createElement("div", {
+    }, [{
+      label: "Cliente",
+      value: clientName || "—"
+    }, {
+      label: "Data",
+      value: clientDate || "—"
+    }, {
+      label: "Valor Total",
+      value: fmtBRLFull(totalAmount)
+    }].map(({
+      label,
+      value
+    }) => /*#__PURE__*/React.createElement("div", {
+      key: label,
+      style: {
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: "#f8fafc",
+        border: "1px solid #e2e8f0",
+        borderRadius: 8,
+        padding: "8px 16px",
+        minWidth: 150
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        color: "#64748b",
+        fontWeight: 600,
+        textTransform: "uppercase",
+        letterSpacing: "0.5px",
+        marginBottom: 2
+      }
+    }, label), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 14,
+        color: "#1e293b",
+        fontWeight: 700
+      }
+    }, value)))), /*#__PURE__*/React.createElement("div", {
       style: {
         marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        marginBottom: 12,
+        flexWrap: "wrap",
+        gap: 12
       }
     }, /*#__PURE__*/React.createElement("label", {
       style: {
         fontSize: 13,
         fontWeight: 600,
         color: "#1e293b",
-        display: "block",
-        marginBottom: 8
+        display: "block"
       }
     }, "N\xEDvel de Detalhe"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "checkbox",
+      id: "subtotalsToggle",
+      checked: showSubtotals,
+      onChange: e => setShowSubtotals(e.target.checked),
+      style: {
+        width: 16,
+        height: 16,
+        cursor: "pointer"
+      }
+    }), /*#__PURE__*/React.createElement("label", {
+      htmlFor: "subtotalsToggle",
+      style: {
+        fontSize: 13,
+        color: "#475569",
+        cursor: "pointer"
+      }
+    }, "Mostrar hierarquia"))), /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         gap: 4,
         backgroundColor: "#f1f5f9",
         borderRadius: 6,
         padding: 4,
-        width: "fit-content"
+        width: "fit-content",
+        flexWrap: "wrap"
       }
     }, [{
       level: 5,
@@ -2902,6 +3837,9 @@ ${s3}
     }, {
       level: 4,
       label: "Detalhado"
+    }, {
+      level: "liq",
+      label: "💧 Liquidez"
     }].map(option => /*#__PURE__*/React.createElement("button", {
       key: option.level,
       onClick: () => setProposalDetailLevel(option.level),
@@ -2916,60 +3854,554 @@ ${s3}
         cursor: "pointer",
         transition: "all 0.2s"
       }
-    }, option.label)))), /*#__PURE__*/React.createElement("div", {
+    }, option.label)))), proposalDetailLevel !== "liq" && /*#__PURE__*/React.createElement("div", {
       style: {
         marginBottom: 24
       }
-    }, /*#__PURE__*/React.createElement("table", {
-      style: {
-        width: "100%",
-        borderCollapse: "collapse"
-      }
-    }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
-      style: {
-        backgroundColor: THEME.tblHeader
-      }
-    }, /*#__PURE__*/React.createElement("th", {
-      style: {
+    }, (() => {
+      // ── column definitions per level ──
+      const thStyle = {
         textAlign: "left",
-        padding: "10px 8px",
+        padding: "9px 10px",
         fontSize: 12,
         fontWeight: 700,
-        color: THEME.tblTextLight
-      }
-    }, "Grupo"), proposalDetailLevel !== 5 && proposalDetailLevel !== 1 && proposalDetailLevel !== 2 && /*#__PURE__*/React.createElement("th", {
-      style: {
-        textAlign: "left",
-        padding: "10px 8px",
-        fontSize: 12,
-        fontWeight: 700,
-        color: THEME.tblTextLight
-      }
-    }, "Subgrupo"), /*#__PURE__*/React.createElement("th", {
-      style: {
-        textAlign: "left",
-        padding: "10px 8px",
-        fontSize: 12,
-        fontWeight: 700,
-        color: THEME.tblTextLight
-      }
-    }, "Ativo"), /*#__PURE__*/React.createElement("th", {
-      style: {
+        color: THEME.tblTextLight,
+        whiteSpace: "nowrap"
+      };
+      const thR = {
+        ...thStyle,
         textAlign: "right",
-        padding: "10px 8px",
-        fontSize: 12,
-        fontWeight: 700,
-        color: THEME.tblTextLight
-      }
-    }, "%"), /*#__PURE__*/React.createElement("th", {
-      style: {
+        width: 64
+      };
+      const thRv = {
+        ...thStyle,
         textAlign: "right",
-        padding: "10px 8px",
+        width: 130
+      };
+      const headers = proposalDetailLevel === 1 ? [/*#__PURE__*/React.createElement("th", {
+        key: "cl",
+        style: thStyle
+      }, "Classe"), /*#__PURE__*/React.createElement("th", {
+        key: "p",
+        style: thR
+      }, "%"), /*#__PURE__*/React.createElement("th", {
+        key: "v",
+        style: thRv
+      }, "R$")] : proposalDetailLevel === 2 ? [/*#__PURE__*/React.createElement("th", {
+        key: "cl",
+        style: thStyle
+      }, "Classe"), /*#__PURE__*/React.createElement("th", {
+        key: "gr",
+        style: thStyle
+      }, "Grupo"), /*#__PURE__*/React.createElement("th", {
+        key: "p",
+        style: thR
+      }, "%"), /*#__PURE__*/React.createElement("th", {
+        key: "v",
+        style: thRv
+      }, "R$")] : proposalDetailLevel === 3 ? [/*#__PURE__*/React.createElement("th", {
+        key: "gr",
+        style: thStyle
+      }, "Grupo"), /*#__PURE__*/React.createElement("th", {
+        key: "sg",
+        style: thStyle
+      }, "Subgrupo"), /*#__PURE__*/React.createElement("th", {
+        key: "p",
+        style: thR
+      }, "%"), /*#__PURE__*/React.createElement("th", {
+        key: "v",
+        style: thRv
+      }, "R$")] : proposalDetailLevel === 4 ? [/*#__PURE__*/React.createElement("th", {
+        key: "gr",
+        style: thStyle
+      }, "Grupo"), /*#__PURE__*/React.createElement("th", {
+        key: "sg",
+        style: thStyle
+      }, "Subgrupo"), /*#__PURE__*/React.createElement("th", {
+        key: "at",
+        style: thStyle
+      }, "Ativo"), /*#__PURE__*/React.createElement("th", {
+        key: "p",
+        style: thR
+      }, "%"), /*#__PURE__*/React.createElement("th", {
+        key: "v",
+        style: thRv
+      }, "R$")] : /* level 5 */[/*#__PURE__*/React.createElement("th", {
+        key: "gr",
+        style: thStyle
+      }, "Grupo"), /*#__PURE__*/React.createElement("th", {
+        key: "at",
+        style: thStyle
+      }, "Ativo"), /*#__PURE__*/React.createElement("th", {
+        key: "p",
+        style: thR
+      }, "%"), /*#__PURE__*/React.createElement("th", {
+        key: "v",
+        style: thRv
+      }, "R$")];
+      const classeOrder = ["Renda Fixa", "Multimercado", "Renda Variável", "Alternativos", "Previdência"];
+      const groupsByClasse = {};
+      Object.keys(alloc).forEach(gid => {
+        const cl = GROUPS[gid].classe;
+        if (!groupsByClasse[cl]) groupsByClasse[cl] = [];
+        groupsByClasse[cl].push(gid);
+      });
+
+      // Shared cell styles
+      const tdN = extra => ({
+        padding: "7px 10px",
         fontSize: 12,
+        color: THEME.tblTextDark,
+        ...extra
+      });
+      const tdR = extra => ({
+        padding: "7px 10px",
+        fontSize: 12,
+        textAlign: "right",
+        color: THEME.tblTextDark,
+        ...extra
+      });
+      const clRow = {
+        backgroundColor: "#dbeafe",
         fontWeight: 700,
-        color: THEME.tblTextLight
+        fontSize: 12
+      };
+      const clRowT = {
+        color: "#1e3a5f"
+      };
+      const grRow = {
+        backgroundColor: "#eff6ff",
+        fontWeight: 600,
+        fontSize: 12
+      };
+      const sgRow = {
+        backgroundColor: THEME.tblSubgroup,
+        fontSize: 11,
+        fontStyle: "italic"
+      };
+      const atRow = {
+        backgroundColor: THEME.tblAsset,
+        fontSize: 11,
+        borderBottom: "1px solid " + THEME.borderLight
+      };
+      let rows = [];
+      if (proposalDetailLevel === 1) {
+        // ── Por Classes ──
+        classeOrder.forEach(classe => {
+          const gids = groupsByClasse[classe] || [];
+          const pct = gids.reduce((s, g) => s + calculateGroupTotal(g, alloc), 0);
+          if (pct <= 0.001) return;
+          rows.push(/*#__PURE__*/React.createElement("tr", {
+            key: `c-${classe}`,
+            style: clRow
+          }, /*#__PURE__*/React.createElement("td", {
+            style: tdN(clRowT)
+          }, classe), /*#__PURE__*/React.createElement("td", {
+            style: tdR(clRowT)
+          }, fmtPct(pct)), /*#__PURE__*/React.createElement("td", {
+            style: tdR(clRowT)
+          }, fmtBRLFull(totalAmount * pct / 100))));
+        });
+      } else if (proposalDetailLevel === 2) {
+        // ── Por Grupos ──
+        classeOrder.forEach(classe => {
+          const gids = groupsByClasse[classe] || [];
+          const cPct = gids.reduce((s, g) => s + calculateGroupTotal(g, alloc), 0);
+          if (cPct <= 0.001) return;
+          if (showSubtotals) {
+            rows.push(/*#__PURE__*/React.createElement("tr", {
+              key: `c-${classe}`,
+              style: clRow
+            }, /*#__PURE__*/React.createElement("td", {
+              style: tdN(clRowT)
+            }, classe), /*#__PURE__*/React.createElement("td", {
+              style: tdN(clRowT)
+            }), /*#__PURE__*/React.createElement("td", {
+              style: tdR(clRowT)
+            }, fmtPct(cPct)), /*#__PURE__*/React.createElement("td", {
+              style: tdR(clRowT)
+            }, fmtBRLFull(totalAmount * cPct / 100))));
+            gids.forEach(gid => {
+              const gt = calculateGroupTotal(gid, alloc);
+              if (gt <= 0.001) return;
+              rows.push(/*#__PURE__*/React.createElement("tr", {
+                key: gid,
+                style: grRow
+              }, /*#__PURE__*/React.createElement("td", {
+                style: tdN({
+                  paddingLeft: 18
+                })
+              }), /*#__PURE__*/React.createElement("td", {
+                style: tdN()
+              }, GROUPS[gid].nome), /*#__PURE__*/React.createElement("td", {
+                style: tdR()
+              }, fmtPct(gt)), /*#__PURE__*/React.createElement("td", {
+                style: tdR()
+              }, fmtBRLFull(totalAmount * gt / 100))));
+            });
+          } else {
+            // pivot style
+            gids.forEach((gid, gi) => {
+              const gt = calculateGroupTotal(gid, alloc);
+              if (gt <= 0.001) return;
+              rows.push(/*#__PURE__*/React.createElement("tr", {
+                key: gid,
+                style: grRow
+              }, /*#__PURE__*/React.createElement("td", {
+                style: tdN(gi === 0 ? clRowT : {
+                  color: "transparent",
+                  userSelect: "none"
+                })
+              }, gi === 0 ? classe : ""), /*#__PURE__*/React.createElement("td", {
+                style: tdN()
+              }, GROUPS[gid].nome), /*#__PURE__*/React.createElement("td", {
+                style: tdR()
+              }, fmtPct(gt)), /*#__PURE__*/React.createElement("td", {
+                style: tdR()
+              }, fmtBRLFull(totalAmount * gt / 100))));
+            });
+          }
+        });
+      } else if (proposalDetailLevel === 3) {
+        // ── Por Subgrupos ──
+        Object.keys(alloc).forEach(gid => {
+          const gt = calculateGroupTotal(gid, alloc);
+          if (gt <= 0.001) return;
+          const sgMap = {};
+          alloc[gid].assets.forEach(a => {
+            const sgName = SUBGROUPS[gid]?.find(sg => sg.id === a.subgrupo)?.nome || customSubgroups[a.subgrupo]?.nome || a.subgrupo || "—";
+            if (!sgMap[sgName]) sgMap[sgName] = 0;
+            sgMap[sgName] += a.pct;
+          });
+          const sgs = Object.entries(sgMap);
+          if (showSubtotals) {
+            rows.push(/*#__PURE__*/React.createElement("tr", {
+              key: `g-${gid}`,
+              style: grRow
+            }, /*#__PURE__*/React.createElement("td", {
+              style: tdN({
+                fontWeight: 700
+              })
+            }, GROUPS[gid].nome), /*#__PURE__*/React.createElement("td", {
+              style: tdN()
+            }), /*#__PURE__*/React.createElement("td", {
+              style: tdR({
+                fontWeight: 700
+              })
+            }, fmtPct(gt)), /*#__PURE__*/React.createElement("td", {
+              style: tdR({
+                fontWeight: 700
+              })
+            }, fmtBRLFull(totalAmount * gt / 100))));
+            sgs.forEach(([sgName, pct]) => {
+              rows.push(/*#__PURE__*/React.createElement("tr", {
+                key: `sg-${gid}-${sgName}`,
+                style: sgRow
+              }, /*#__PURE__*/React.createElement("td", {
+                style: tdN({
+                  paddingLeft: 18
+                })
+              }), /*#__PURE__*/React.createElement("td", {
+                style: tdN({
+                  color: THEME.textMid
+                })
+              }, sgName), /*#__PURE__*/React.createElement("td", {
+                style: tdR({
+                  color: THEME.textMid
+                })
+              }, fmtPct(pct)), /*#__PURE__*/React.createElement("td", {
+                style: tdR({
+                  color: THEME.textMid
+                })
+              }, fmtBRLFull(totalAmount * pct / 100))));
+            });
+          } else {
+            sgs.forEach(([sgName, pct], si) => {
+              rows.push(/*#__PURE__*/React.createElement("tr", {
+                key: `sg-${gid}-${sgName}`,
+                style: atRow
+              }, /*#__PURE__*/React.createElement("td", {
+                style: tdN({
+                  fontWeight: si === 0 ? 700 : "normal",
+                  color: si === 0 ? THEME.tblTextDark : "transparent"
+                })
+              }, si === 0 ? GROUPS[gid].nome : ""), /*#__PURE__*/React.createElement("td", {
+                style: tdN({
+                  color: THEME.textMid
+                })
+              }, sgName), /*#__PURE__*/React.createElement("td", {
+                style: tdR()
+              }, fmtPct(pct)), /*#__PURE__*/React.createElement("td", {
+                style: tdR()
+              }, fmtBRLFull(totalAmount * pct / 100))));
+            });
+          }
+        });
+      } else if (proposalDetailLevel === 4) {
+        // ── Detalhado ──
+        Object.keys(alloc).forEach(gid => {
+          const gt = calculateGroupTotal(gid, alloc);
+          if (gt <= 0.001) return;
+          const sgMap = {};
+          alloc[gid].assets.forEach(a => {
+            const sgName = SUBGROUPS[gid]?.find(sg => sg.id === a.subgrupo)?.nome || customSubgroups[a.subgrupo]?.nome || a.subgrupo || "—";
+            if (!sgMap[sgName]) sgMap[sgName] = [];
+            sgMap[sgName].push(a);
+          });
+          const sgs = Object.entries(sgMap);
+          if (showSubtotals) {
+            rows.push(/*#__PURE__*/React.createElement("tr", {
+              key: `g-${gid}`,
+              style: grRow
+            }, /*#__PURE__*/React.createElement("td", {
+              colSpan: 3,
+              style: tdN({
+                fontWeight: 700
+              })
+            }, GROUPS[gid].nome), /*#__PURE__*/React.createElement("td", {
+              style: tdR({
+                fontWeight: 700
+              })
+            }, fmtPct(gt)), /*#__PURE__*/React.createElement("td", {
+              style: tdR({
+                fontWeight: 700
+              })
+            }, fmtBRLFull(totalAmount * gt / 100))));
+            sgs.forEach(([sgName, assets]) => {
+              const sgPct = assets.reduce((s, a) => s + a.pct, 0);
+              rows.push(/*#__PURE__*/React.createElement("tr", {
+                key: `sg-${gid}-${sgName}`,
+                style: sgRow
+              }, /*#__PURE__*/React.createElement("td", {
+                style: tdN({
+                  paddingLeft: 18
+                })
+              }), /*#__PURE__*/React.createElement("td", {
+                colSpan: 2,
+                style: tdN({
+                  color: THEME.textMid
+                })
+              }, sgName), /*#__PURE__*/React.createElement("td", {
+                style: tdR({
+                  color: THEME.textMid
+                })
+              }, fmtPct(sgPct)), /*#__PURE__*/React.createElement("td", {
+                style: tdR({
+                  color: THEME.textMid
+                })
+              }, fmtBRLFull(totalAmount * sgPct / 100))));
+              assets.forEach(a => {
+                rows.push(/*#__PURE__*/React.createElement("tr", {
+                  key: a.key,
+                  style: atRow
+                }, /*#__PURE__*/React.createElement("td", {
+                  style: tdN({
+                    paddingLeft: 36
+                  })
+                }), /*#__PURE__*/React.createElement("td", {
+                  style: tdN({
+                    paddingLeft: 18
+                  })
+                }), /*#__PURE__*/React.createElement("td", {
+                  style: tdN()
+                }, a.nome, a.isPrev && /*#__PURE__*/React.createElement("span", {
+                  style: {
+                    marginLeft: 5,
+                    fontSize: 9,
+                    padding: "1px 4px",
+                    color: "#ea580c",
+                    border: "1px dashed #ea580c",
+                    borderRadius: 3,
+                    fontWeight: 700
+                  }
+                }, "PREV")), /*#__PURE__*/React.createElement("td", {
+                  style: tdR()
+                }, fmtPct(a.pct)), /*#__PURE__*/React.createElement("td", {
+                  style: tdR()
+                }, fmtBRLFull(totalAmount * a.pct / 100))));
+              });
+            });
+          } else {
+            // pivot style: group name on first row, subgroup on first row of each subgroup
+            sgs.forEach(([sgName, assets], si) => {
+              assets.forEach((a, ai) => {
+                const showG = si === 0 && ai === 0;
+                const showSg = ai === 0;
+                rows.push(/*#__PURE__*/React.createElement("tr", {
+                  key: a.key,
+                  style: atRow
+                }, /*#__PURE__*/React.createElement("td", {
+                  style: tdN(showG ? {
+                    fontWeight: 700
+                  } : {
+                    color: "transparent"
+                  })
+                }, showG ? GROUPS[gid].nome : ""), /*#__PURE__*/React.createElement("td", {
+                  style: tdN(showSg ? {
+                    color: THEME.textMid
+                  } : {
+                    color: "transparent"
+                  })
+                }, showSg ? sgName : ""), /*#__PURE__*/React.createElement("td", {
+                  style: tdN()
+                }, a.nome, a.isPrev && /*#__PURE__*/React.createElement("span", {
+                  style: {
+                    marginLeft: 5,
+                    fontSize: 9,
+                    padding: "1px 4px",
+                    color: "#ea580c",
+                    border: "1px dashed #ea580c",
+                    borderRadius: 3,
+                    fontWeight: 700
+                  }
+                }, "PREV")), /*#__PURE__*/React.createElement("td", {
+                  style: tdR()
+                }, fmtPct(a.pct)), /*#__PURE__*/React.createElement("td", {
+                  style: tdR()
+                }, fmtBRLFull(totalAmount * a.pct / 100))));
+              });
+            });
+          }
+        });
+      } else {
+        // ── Level 5: Sugestão do Editor (Grupo + Ativo, sem Subgrupo) ──
+        classeOrder.forEach(classe => {
+          const gids = groupsByClasse[classe] || [];
+          const cPct = gids.reduce((s, g) => s + calculateGroupTotal(g, alloc), 0);
+          if (cPct <= 0.001) return;
+          if (showSubtotals) {
+            rows.push(/*#__PURE__*/React.createElement("tr", {
+              key: `c-${classe}`,
+              style: clRow
+            }, /*#__PURE__*/React.createElement("td", {
+              colSpan: 4,
+              style: tdN(clRowT)
+            }, classe, " \u2014 ", fmtPct(cPct), " \xB7 ", fmtBRLFull(totalAmount * cPct / 100))));
+            gids.forEach(gid => {
+              const gt = calculateGroupTotal(gid, alloc);
+              if (gt <= 0.001) return;
+              rows.push(/*#__PURE__*/React.createElement("tr", {
+                key: `g-${gid}`,
+                style: grRow
+              }, /*#__PURE__*/React.createElement("td", {
+                style: tdN({
+                  fontWeight: 700
+                })
+              }, GROUPS[gid].nome), /*#__PURE__*/React.createElement("td", {
+                style: tdN()
+              }), /*#__PURE__*/React.createElement("td", {
+                style: tdR({
+                  fontWeight: 700
+                })
+              }, fmtPct(gt)), /*#__PURE__*/React.createElement("td", {
+                style: tdR({
+                  fontWeight: 700
+                })
+              }, fmtBRLFull(totalAmount * gt / 100))));
+              alloc[gid].assets.forEach(a => {
+                rows.push(/*#__PURE__*/React.createElement("tr", {
+                  key: a.key,
+                  style: atRow
+                }, /*#__PURE__*/React.createElement("td", {
+                  style: tdN({
+                    paddingLeft: 18
+                  })
+                }), /*#__PURE__*/React.createElement("td", {
+                  style: tdN()
+                }, a.nome, a.isPrev && /*#__PURE__*/React.createElement("span", {
+                  style: {
+                    marginLeft: 5,
+                    fontSize: 9,
+                    padding: "1px 4px",
+                    color: "#ea580c",
+                    border: "1px dashed #ea580c",
+                    borderRadius: 3,
+                    fontWeight: 700
+                  }
+                }, "PREV")), /*#__PURE__*/React.createElement("td", {
+                  style: tdR()
+                }, fmtPct(a.pct)), /*#__PURE__*/React.createElement("td", {
+                  style: tdR()
+                }, fmtBRLFull(totalAmount * a.pct / 100))));
+              });
+            });
+          } else {
+            // pivot style
+            gids.forEach((gid, gi) => {
+              const assets = alloc[gid].assets;
+              if (!assets.length) return;
+              assets.forEach((a, ai) => {
+                const showG = ai === 0;
+                rows.push(/*#__PURE__*/React.createElement("tr", {
+                  key: a.key,
+                  style: atRow
+                }, /*#__PURE__*/React.createElement("td", {
+                  style: tdN(showG ? {
+                    fontWeight: 700
+                  } : {
+                    color: "transparent"
+                  })
+                }, showG ? GROUPS[gid].nome : ""), /*#__PURE__*/React.createElement("td", {
+                  style: tdN()
+                }, a.nome, a.isPrev && /*#__PURE__*/React.createElement("span", {
+                  style: {
+                    marginLeft: 5,
+                    fontSize: 9,
+                    padding: "1px 4px",
+                    color: "#ea580c",
+                    border: "1px dashed #ea580c",
+                    borderRadius: 3,
+                    fontWeight: 700
+                  }
+                }, "PREV")), /*#__PURE__*/React.createElement("td", {
+                  style: tdR()
+                }, fmtPct(a.pct)), /*#__PURE__*/React.createElement("td", {
+                  style: tdR()
+                }, fmtBRLFull(totalAmount * a.pct / 100))));
+              });
+            });
+          }
+        });
       }
-    }, "R$"))), /*#__PURE__*/React.createElement("tbody", null, proposalDetailLevel === 5 ?
+      const totalCols = proposalDetailLevel === 1 ? 1 : proposalDetailLevel === 2 ? 2 : proposalDetailLevel === 3 ? 2 : proposalDetailLevel === 4 ? 3 : 2;
+      rows.push(/*#__PURE__*/React.createElement("tr", {
+        key: "total",
+        style: {
+          backgroundColor: THEME.tblHeader,
+          color: THEME.tblTextLight,
+          fontWeight: 700
+        }
+      }, /*#__PURE__*/React.createElement("td", {
+        colSpan: totalCols,
+        style: {
+          padding: "9px 10px",
+          fontSize: 13
+        }
+      }, "TOTAL"), /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "9px 10px",
+          fontSize: 13,
+          textAlign: "right"
+        }
+      }, fmtPct(totalSum)), /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "9px 10px",
+          fontSize: 13,
+          textAlign: "right"
+        }
+      }, fmtBRLFull(totalAmount))));
+      return /*#__PURE__*/React.createElement("table", {
+        style: {
+          width: "100%",
+          borderCollapse: "collapse",
+          tableLayout: "auto"
+        }
+      }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
+        style: {
+          backgroundColor: THEME.tblHeader
+        }
+      }, headers)), /*#__PURE__*/React.createElement("tbody", null, rows));
+    })()), false && /*#__PURE__*/React.createElement("table", null, /*#__PURE__*/React.createElement("tbody", null, proposalDetailLevel === 5 ?
     // LEVEL 5: Sugestão do Editor — Classe → Grupo → Ativos (sem subgrupos)
     (() => {
       const classeOrder = ["Renda Fixa", "Multimercado", "Renda Variável", "Alternativos", "Previdência"];
@@ -3005,16 +4437,12 @@ ${s3}
             padding: "10px 8px",
             textAlign: "right"
           }
-        }, classePct.toFixed(1), "%"), /*#__PURE__*/React.createElement("td", {
+        }, fmtPct(classePct)), /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "10px 8px",
             textAlign: "right"
           }
-        }, classeValue.toLocaleString("pt-BR", {
-          style: "currency",
-          currency: "BRL",
-          maximumFractionDigits: 0
-        }))), ...groupIds.flatMap(groupId => {
+        }, fmtBRLFull(classeValue))), ...groupIds.flatMap(groupId => {
           const groupData = alloc[groupId];
           const groupTotal = calculateGroupTotal(groupId, alloc);
           if (groupTotal <= 0.001) return [];
@@ -3042,17 +4470,13 @@ ${s3}
               textAlign: "right",
               color: THEME.tblTextDark
             }
-          }, groupTotal.toFixed(1), "%"), /*#__PURE__*/React.createElement("td", {
+          }, fmtPct(groupTotal)), /*#__PURE__*/React.createElement("td", {
             style: {
               padding: "8px 8px",
               textAlign: "right",
               color: THEME.tblTextDark
             }
-          }, groupValue.toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-            maximumFractionDigits: 0
-          }))), ...groupData.assets.map(asset => {
+          }, fmtBRLFull(groupValue))), ...groupData.assets.map(asset => {
             const assetValue = totalAmount * asset.pct / 100;
             return /*#__PURE__*/React.createElement("tr", {
               key: asset.key,
@@ -3087,17 +4511,13 @@ ${s3}
                 textAlign: "right",
                 color: THEME.tblTextDark
               }
-            }, asset.pct.toFixed(1), "%"), /*#__PURE__*/React.createElement("td", {
+            }, fmtPct(asset.pct)), /*#__PURE__*/React.createElement("td", {
               style: {
                 padding: "6px 8px",
                 textAlign: "right",
                 color: THEME.tblTextDark
               }
-            }, assetValue.toLocaleString("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-              maximumFractionDigits: 0
-            })));
+            }, fmtBRLFull(assetValue)));
           })];
         })];
       });
@@ -3137,16 +4557,12 @@ ${s3}
             padding: "10px 8px",
             textAlign: "right"
           }
-        }, classePct.toFixed(1), "%"), /*#__PURE__*/React.createElement("td", {
+        }, fmtPct(classePct)), /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "10px 8px",
             textAlign: "right"
           }
-        }, classeValue.toLocaleString("pt-BR", {
-          style: "currency",
-          currency: "BRL",
-          maximumFractionDigits: 0
-        })))];
+        }, fmtBRLFull(classeValue)))];
       });
     })() : proposalDetailLevel === 2 ?
     // LEVEL 2: Groups
@@ -3177,18 +4593,14 @@ ${s3}
           textAlign: "right",
           color: THEME.tblTextDark
         }
-      }, groupTotal.toFixed(1), "%"), /*#__PURE__*/React.createElement("td", {
+      }, fmtPct(groupTotal)), /*#__PURE__*/React.createElement("td", {
         style: {
           padding: "10px 8px",
           fontSize: 12,
           textAlign: "right",
           color: THEME.tblTextDark
         }
-      }, groupValue.toLocaleString("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-        maximumFractionDigits: 0
-      })));
+      }, fmtBRLFull(groupValue)));
     }) : proposalDetailLevel === 3 ?
     // LEVEL 3: Groups + Subgroups (subtotals)
     Object.keys(alloc).map(groupId => {
@@ -3236,18 +4648,14 @@ ${s3}
             textAlign: "right",
             color: THEME.tblTextDark
           }
-        }, groupTotal.toFixed(1), "%"), /*#__PURE__*/React.createElement("td", {
+        }, fmtPct(groupTotal)), /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "10px 8px",
             fontSize: 12,
             textAlign: "right",
             color: THEME.tblTextDark
           }
-        }, groupValue.toLocaleString("pt-BR", {
-          style: "currency",
-          currency: "BRL",
-          maximumFractionDigits: 0
-        }))), /*#__PURE__*/React.createElement("tr", {
+        }, fmtBRLFull(groupValue))), /*#__PURE__*/React.createElement("tr", {
           style: {
             backgroundColor: THEME.tblSubgroup,
             fontStyle: "italic",
@@ -3276,18 +4684,14 @@ ${s3}
             color: THEME.textMid,
             fontWeight: 500
           }
-        }, sgPct.toFixed(1), "%"), /*#__PURE__*/React.createElement("td", {
+        }, fmtPct(sgPct)), /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "8px 8px",
             textAlign: "right",
             color: THEME.textMid,
             fontWeight: 500
           }
-        }, sgValue.toLocaleString("pt-BR", {
-          style: "currency",
-          currency: "BRL",
-          maximumFractionDigits: 0
-        }))));
+        }, fmtBRLFull(sgValue))));
       }));
     }) :
     // LEVEL 4: Full hierarchy (Classes -> Groups -> Subgroups -> Assets)
@@ -3329,16 +4733,12 @@ ${s3}
             padding: "10px 8px",
             textAlign: "right"
           }
-        }, classePct.toFixed(1), "%"), /*#__PURE__*/React.createElement("td", {
+        }, fmtPct(classePct)), /*#__PURE__*/React.createElement("td", {
           style: {
             padding: "10px 8px",
             textAlign: "right"
           }
-        }, classeValue.toLocaleString("pt-BR", {
-          style: "currency",
-          currency: "BRL",
-          maximumFractionDigits: 0
-        }))), ...groupIds.flatMap(groupId => {
+        }, fmtBRLFull(classeValue))), ...groupIds.flatMap(groupId => {
           const groupData = alloc[groupId];
           const groupTotal = calculateGroupTotal(groupId, alloc);
           if (groupTotal <= 0.001) return [];
@@ -3377,17 +4777,13 @@ ${s3}
               textAlign: "right",
               color: THEME.tblTextDark
             }
-          }, groupTotal.toFixed(1), "%"), /*#__PURE__*/React.createElement("td", {
+          }, fmtPct(groupTotal)), /*#__PURE__*/React.createElement("td", {
             style: {
               padding: "8px 8px",
               textAlign: "right",
               color: THEME.tblTextDark
             }
-          }, groupValue.toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-            maximumFractionDigits: 0
-          }))), ...Object.entries(subgroupMap).flatMap(([sgName, assets]) => {
+          }, fmtBRLFull(groupValue))), ...Object.entries(subgroupMap).flatMap(([sgName, assets]) => {
             const sgPct = assets.reduce((sum, a) => sum + a.pct, 0);
             const sgValue = totalAmount * sgPct / 100;
             return [/*#__PURE__*/React.createElement("tr", {
@@ -3417,17 +4813,13 @@ ${s3}
                 textAlign: "right",
                 color: THEME.textLight
               }
-            }, sgPct.toFixed(1), "%"), /*#__PURE__*/React.createElement("td", {
+            }, fmtPct(sgPct)), /*#__PURE__*/React.createElement("td", {
               style: {
                 padding: "6px 8px",
                 textAlign: "right",
                 color: THEME.textLight
               }
-            }, sgValue.toLocaleString("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-              maximumFractionDigits: 0
-            }))), ...assets.map(asset => {
+            }, fmtBRLFull(sgValue))), ...assets.map(asset => {
               const assetValue = totalAmount * asset.pct / 100;
               return /*#__PURE__*/React.createElement("tr", {
                 key: asset.key,
@@ -3466,57 +4858,547 @@ ${s3}
                   textAlign: "right",
                   color: THEME.tblTextDark
                 }
-              }, asset.pct.toFixed(1), "%"), /*#__PURE__*/React.createElement("td", {
+              }, fmtPct(asset.pct)), /*#__PURE__*/React.createElement("td", {
                 style: {
                   padding: "6px 8px",
                   textAlign: "right",
                   color: THEME.tblTextDark
                 }
-              }, assetValue.toLocaleString("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-                maximumFractionDigits: 0
-              })));
+              }, fmtBRLFull(assetValue)));
             })];
           })];
         })];
       });
-    })(), /*#__PURE__*/React.createElement("tr", {
+    })())), proposalDetailLevel === "liq" && (() => {
+      const alloc = buildAllocationStructure();
+      // Mapeia cada ativo para seu bucket
+      const bucketTotals = {
+        d1: 0,
+        d65: 0,
+        "1ano": 0,
+        "5anos": 0,
+        "5mais": 0,
+        outros: 0
+      };
+      const bucketAssets = {
+        d1: [],
+        d65: [],
+        "1ano": [],
+        "5anos": [],
+        "5mais": [],
+        outros: []
+      };
+      const prevSemMarca = []; // ativos previdência sem bucket definido
+      Object.keys(alloc).forEach(gid => {
+        alloc[gid].assets.forEach(asset => {
+          const assetData = ASSETS.find(a => a.nome === asset.nome);
+          const cotLiq = assetData ? assetData.cotLiq : null;
+          const bucket = getLiqBucket(asset.key, cotLiq) || (gid === "previdencia" ? null : null);
+          const val = totalAmount * asset.pct / 100;
+          const effectiveBucket = bucket || "outros";
+          bucketTotals[effectiveBucket] = (bucketTotals[effectiveBucket] || 0) + val;
+          bucketAssets[effectiveBucket].push({
+            nome: asset.nome,
+            gid: gid,
+            pct: asset.pct,
+            val: val
+          });
+          if (!bucket && gid === "previdencia") prevSemMarca.push(asset.nome);
+        });
+      });
+      const hasMetas = liqOptIn === true;
+      const activeBuckets = LIQ_BUCKETS.filter(b => bucketTotals[b.key] > 0.01);
+      const hasOutros = bucketTotals["outros"] > 0.01;
+      const drillKey = "liqDrillOpen";
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          marginTop: 32,
+          border: "1px solid #e2e8f0",
+          borderRadius: 8,
+          overflow: "hidden"
+        }
+      }, /*#__PURE__*/React.createElement("div", {
+        style: {
+          backgroundColor: "#1e3a5f",
+          color: "#fff",
+          padding: "12px 16px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between"
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontWeight: 700,
+          fontSize: 14
+        }
+      }, "\uD83D\uDCA7 An\xE1lise de Liquidez"), /*#__PURE__*/React.createElement("button", {
+        onClick: () => setCurrentStep(2),
+        style: {
+          padding: "4px 10px",
+          backgroundColor: "transparent",
+          color: "#94a3b8",
+          border: "1px solid #475569",
+          borderRadius: 4,
+          cursor: "pointer",
+          fontSize: 11
+        }
+      }, "Editar metas")), /*#__PURE__*/React.createElement("table", {
+        style: {
+          width: "100%",
+          borderCollapse: "collapse"
+        }
+      }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", {
+        style: {
+          backgroundColor: "#f8fafc"
+        }
+      }, /*#__PURE__*/React.createElement("th", {
+        style: {
+          textAlign: "left",
+          padding: "8px 12px",
+          fontSize: 11,
+          fontWeight: 700,
+          color: "#475569",
+          borderBottom: "1px solid #e2e8f0"
+        }
+      }, "Faixa"), /*#__PURE__*/React.createElement("th", {
+        style: {
+          textAlign: "right",
+          padding: "8px 12px",
+          fontSize: 11,
+          fontWeight: 700,
+          color: "#475569",
+          borderBottom: "1px solid #e2e8f0"
+        }
+      }, "R$ Alocado"), /*#__PURE__*/React.createElement("th", {
+        style: {
+          textAlign: "right",
+          padding: "8px 12px",
+          fontSize: 11,
+          fontWeight: 700,
+          color: "#475569",
+          borderBottom: "1px solid #e2e8f0"
+        }
+      }, "% Carteira"), hasMetas && /*#__PURE__*/React.createElement("th", {
+        style: {
+          textAlign: "right",
+          padding: "8px 12px",
+          fontSize: 11,
+          fontWeight: 700,
+          color: "#475569",
+          borderBottom: "1px solid #e2e8f0"
+        }
+      }, "Meta"), hasMetas && /*#__PURE__*/React.createElement("th", {
+        style: {
+          textAlign: "center",
+          padding: "8px 12px",
+          fontSize: 11,
+          fontWeight: 700,
+          color: "#475569",
+          borderBottom: "1px solid #e2e8f0"
+        }
+      }, "Status"), /*#__PURE__*/React.createElement("th", {
+        style: {
+          textAlign: "center",
+          padding: "8px 12px",
+          fontSize: 11,
+          fontWeight: 700,
+          color: "#475569",
+          borderBottom: "1px solid #e2e8f0"
+        }
+      }, "Detalhe"))), /*#__PURE__*/React.createElement("tbody", null, activeBuckets.map(b => {
+        const val = bucketTotals[b.key] || 0;
+        const pct = totalAmount > 0 ? val / totalAmount * 100 : 0;
+        const meta = hasMetas ? parseFloat(liqTargets[b.key]) || 0 : null;
+        const ok = meta !== null ? pct >= meta - 0.05 : null;
+        const drillId = `drill_${b.key}`;
+        return /*#__PURE__*/React.createElement(React.Fragment, {
+          key: b.key
+        }, /*#__PURE__*/React.createElement("tr", {
+          style: {
+            borderBottom: "1px solid #f1f5f9"
+          }
+        }, /*#__PURE__*/React.createElement("td", {
+          style: {
+            padding: "9px 12px",
+            fontSize: 12
+          }
+        }, /*#__PURE__*/React.createElement("span", {
+          style: {
+            display: "inline-block",
+            width: 9,
+            height: 9,
+            borderRadius: "50%",
+            backgroundColor: b.cor,
+            marginRight: 7
+          }
+        }), /*#__PURE__*/React.createElement("span", {
+          style: {
+            fontWeight: 600,
+            color: "#1e293b"
+          }
+        }, b.label)), /*#__PURE__*/React.createElement("td", {
+          style: {
+            padding: "9px 12px",
+            fontSize: 12,
+            textAlign: "right",
+            color: "#1e293b",
+            fontWeight: 600
+          }
+        }, val.toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+          maximumFractionDigits: 0
+        })), /*#__PURE__*/React.createElement("td", {
+          style: {
+            padding: "9px 12px",
+            fontSize: 12,
+            textAlign: "right",
+            color: "#1e293b"
+          }
+        }, pct.toFixed(1), "%"), hasMetas && /*#__PURE__*/React.createElement("td", {
+          style: {
+            padding: "9px 12px",
+            fontSize: 12,
+            textAlign: "right",
+            color: "#64748b"
+          }
+        }, meta > 0 ? `${meta.toFixed(0)}%` : "—"), hasMetas && /*#__PURE__*/React.createElement("td", {
+          style: {
+            padding: "9px 12px",
+            textAlign: "center"
+          }
+        }, meta > 0 ? /*#__PURE__*/React.createElement("span", {
+          style: {
+            fontSize: 11,
+            fontWeight: 700,
+            color: ok ? "#059669" : "#dc2626"
+          }
+        }, ok ? "✓ OK" : `▼ ${(meta - pct).toFixed(1)}%`) : /*#__PURE__*/React.createElement("span", {
+          style: {
+            fontSize: 11,
+            color: "#94a3b8"
+          }
+        }, "\u2014")), /*#__PURE__*/React.createElement("td", {
+          style: {
+            padding: "9px 12px",
+            textAlign: "center"
+          }
+        }, /*#__PURE__*/React.createElement("button", {
+          onClick: () => {
+            const el = document.getElementById(drillId);
+            if (el) el.style.display = el.style.display === "none" ? "" : "none";
+          },
+          style: {
+            fontSize: 10,
+            padding: "2px 8px",
+            border: "1px solid #cbd5e1",
+            borderRadius: 3,
+            cursor: "pointer",
+            backgroundColor: "#f8fafc",
+            color: "#64748b"
+          }
+        }, "\u25BC ver"))), /*#__PURE__*/React.createElement("tr", {
+          id: drillId,
+          style: {
+            display: "none",
+            backgroundColor: "#f8fafc"
+          }
+        }, /*#__PURE__*/React.createElement("td", {
+          colSpan: hasMetas ? 6 : 4,
+          style: {
+            padding: "6px 12px 10px 32px"
+          }
+        }, bucketAssets[b.key].map((asset, idx) => /*#__PURE__*/React.createElement("div", {
+          key: idx,
+          style: {
+            fontSize: 11,
+            color: "#475569",
+            marginBottom: 2
+          }
+        }, /*#__PURE__*/React.createElement("span", {
+          style: {
+            display: "inline-block",
+            width: 8,
+            height: 8,
+            borderRadius: "50%",
+            backgroundColor: GROUPS[asset.gid]?.cor || "#ccc",
+            marginRight: 6
+          }
+        }), asset.nome, " \u2014 ", asset.val.toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+          maximumFractionDigits: 0
+        }), " (", asset.pct.toFixed(1), "%)")))));
+      }), hasOutros && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("tr", {
+        style: {
+          borderBottom: "1px solid #f1f5f9",
+          backgroundColor: "#fffbeb"
+        }
+      }, /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "9px 12px",
+          fontSize: 12
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          display: "inline-block",
+          width: 9,
+          height: 9,
+          borderRadius: "50%",
+          backgroundColor: "#94a3b8",
+          marginRight: 7
+        }
+      }), /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontWeight: 600,
+          color: "#92400e"
+        }
+      }, "Outros *")), /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "9px 12px",
+          fontSize: 12,
+          textAlign: "right",
+          color: "#92400e",
+          fontWeight: 600
+        }
+      }, bucketTotals["outros"].toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        maximumFractionDigits: 0
+      })), /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "9px 12px",
+          fontSize: 12,
+          textAlign: "right",
+          color: "#92400e"
+        }
+      }, totalAmount > 0 ? (bucketTotals["outros"] / totalAmount * 100).toFixed(1) : 0, "%"), hasMetas && /*#__PURE__*/React.createElement("td", {
+        colSpan: 2,
+        style: {
+          padding: "9px 12px"
+        }
+      }), /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "9px 12px",
+          textAlign: "center"
+        }
+      }, /*#__PURE__*/React.createElement("button", {
+        onClick: () => {
+          const el = document.getElementById("drill_outros");
+          if (el) el.style.display = el.style.display === "none" ? "" : "none";
+        },
+        style: {
+          fontSize: 10,
+          padding: "2px 8px",
+          border: "1px solid #cbd5e1",
+          borderRadius: 3,
+          cursor: "pointer",
+          backgroundColor: "#f8fafc",
+          color: "#64748b"
+        }
+      }, "\u25BC ver"))), /*#__PURE__*/React.createElement("tr", {
+        id: "drill_outros",
+        style: {
+          display: "none",
+          backgroundColor: "#fffbeb"
+        }
+      }, /*#__PURE__*/React.createElement("td", {
+        colSpan: hasMetas ? 6 : 4,
+        style: {
+          padding: "6px 12px 10px 32px"
+        }
+      }, bucketAssets["outros"].map((asset, idx) => /*#__PURE__*/React.createElement("div", {
+        key: idx,
+        style: {
+          fontSize: 11,
+          color: "#92400e",
+          marginBottom: 2
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          display: "inline-block",
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          backgroundColor: GROUPS[asset.gid]?.cor || "#ccc",
+          marginRight: 6
+        }
+      }), asset.nome, " \u2014 ", asset.val.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        maximumFractionDigits: 0
+      }), " (", asset.pct.toFixed(1), "%)"))))), /*#__PURE__*/React.createElement("tr", {
+        style: {
+          backgroundColor: "#1e3a5f",
+          color: "#fff",
+          fontWeight: 700
+        }
+      }, /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "9px 12px",
+          fontSize: 12
+        }
+      }, "TOTAL"), /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "9px 12px",
+          fontSize: 12,
+          textAlign: "right"
+        }
+      }, totalAmount.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        maximumFractionDigits: 0
+      })), /*#__PURE__*/React.createElement("td", {
+        style: {
+          padding: "9px 12px",
+          fontSize: 12,
+          textAlign: "right"
+        }
+      }, "100,0%"), hasMetas && /*#__PURE__*/React.createElement("td", {
+        colSpan: 2,
+        style: {
+          padding: "9px 12px"
+        }
+      }), /*#__PURE__*/React.createElement("td", null)))), hasOutros && prevSemMarca.length > 0 && /*#__PURE__*/React.createElement("div", {
+        style: {
+          padding: "10px 14px",
+          backgroundColor: "#fffbeb",
+          borderTop: "1px solid #fde68a",
+          fontSize: 11,
+          color: "#92400e"
+        }
+      }, /*#__PURE__*/React.createElement("strong", null, "* Fundos de previd\xEAncia sem liquidez definida:"), " ", prevSemMarca.join(", "), ". Verifique a liquidez real destes ativos com o cliente \u2014 para PGBL Regressivo, marque \"10 anos\" na tela de sele\xE7\xE3o de ativos."));
+    })(), showExportModal && /*#__PURE__*/React.createElement("div", {
+      onClick: () => setShowExportModal(false),
       style: {
-        backgroundColor: THEME.tblHeader,
-        color: THEME.tblTextLight,
-        fontWeight: 700
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "transparent",
+        zIndex: 99
       }
-    }, /*#__PURE__*/React.createElement("td", {
-      colSpan: [5, 1, 2].includes(proposalDetailLevel) ? 2 : 3,
+    }), showPDFDialog && /*#__PURE__*/React.createElement("div", {
       style: {
-        padding: "10px 8px",
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0,0,0,0.4)",
+        zIndex: 200,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+      },
+      onClick: () => setShowPDFDialog(false)
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        backgroundColor: "#fff",
+        borderRadius: 10,
+        padding: 28,
+        minWidth: 340,
+        boxShadow: "0 8px 32px rgba(0,0,0,0.2)"
+      },
+      onClick: e => e.stopPropagation()
+    }, /*#__PURE__*/React.createElement("h3", {
+      style: {
+        margin: "0 0 6px 0",
+        fontSize: 16,
+        fontWeight: 700,
+        color: "#1e3a5f"
+      }
+    }, "\uD83D\uDCC4 Gerar PDF"), /*#__PURE__*/React.createElement("p", {
+      style: {
+        margin: "0 0 18px 0",
+        fontSize: 12,
+        color: "#64748b"
+      }
+    }, "Selecione as se\xE7\xF5es a incluir:"), [{
+      key: "editor",
+      label: "Sugestão do Editor"
+    }, {
+      key: "classes",
+      label: "Por Classes"
+    }, {
+      key: "grupos",
+      label: "Por Grupos"
+    }, {
+      key: "subgrupos",
+      label: "Por Subgrupos"
+    }, {
+      key: "detalhado",
+      label: "Detalhado"
+    }, {
+      key: "liq",
+      label: "💧 Liquidez"
+    }].map(opt => /*#__PURE__*/React.createElement("label", {
+      key: opt.key,
+      style: {
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        marginBottom: 10,
+        cursor: "pointer",
+        fontSize: 13,
+        color: "#1e293b"
+      }
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "checkbox",
+      checked: !!pdfSelectedLevels[opt.key],
+      onChange: e => setPdfSelectedLevels(prev => ({
+        ...prev,
+        [opt.key]: e.target.checked
+      })),
+      style: {
+        width: 16,
+        height: 16
+      }
+    }), opt.label)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: "flex",
+        gap: 10,
+        marginTop: 20
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        setShowPDFDialog(false);
+        exportToPDF(pdfSelectedLevels);
+      },
+      disabled: !Object.values(pdfSelectedLevels).some(Boolean),
+      style: {
+        flex: 1,
+        padding: "10px 0",
+        backgroundColor: "#1e3a5f",
+        color: "#fff",
+        border: "none",
+        borderRadius: 6,
+        cursor: "pointer",
+        fontWeight: 700,
         fontSize: 13
       }
-    }, "TOTAL"), /*#__PURE__*/React.createElement("td", {
+    }, "Gerar PDF"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => setShowPDFDialog(false),
       style: {
-        padding: "10px 8px",
-        fontSize: 13,
-        textAlign: "right"
+        padding: "10px 18px",
+        backgroundColor: "#f1f5f9",
+        color: "#64748b",
+        border: "1px solid #cbd5e1",
+        borderRadius: 6,
+        cursor: "pointer",
+        fontSize: 13
       }
-    }, totalSum.toFixed(1), "%"), /*#__PURE__*/React.createElement("td", {
-      style: {
-        padding: "10px 8px",
-        fontSize: 13,
-        textAlign: "right"
-      }
-    }, totalAmount.toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-      maximumFractionDigits: 0
-    })))))), /*#__PURE__*/React.createElement("div", {
+    }, "Cancelar")))), proposalDetailLevel !== "liq" && /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
         gap: 12,
-        marginTop: 24
+        marginTop: 24,
+        flexWrap: "wrap",
+        marginBottom: 24
       }
     }, /*#__PURE__*/React.createElement("button", {
-      onClick: () => setCurrentStep(3),
+      onClick: () => setCurrentStep(4),
       style: {
         padding: "10px 20px",
         backgroundColor: "#94a3b8",
@@ -3528,7 +5410,24 @@ ${s3}
         fontWeight: 600
       }
     }, "Voltar para Edi\xE7\xE3o"), /*#__PURE__*/React.createElement("button", {
-      onClick: exportToExcel,
+      onClick: () => setCurrentStep(2),
+      style: {
+        padding: "10px 20px",
+        backgroundColor: "#f1f5f9",
+        color: "#64748b",
+        border: "1px solid #cbd5e1",
+        borderRadius: 6,
+        cursor: "pointer",
+        fontSize: 12,
+        fontWeight: 500
+      }
+    }, "\uD83D\uDCA7 Editar Liquidez"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "relative",
+        display: "inline-block"
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => setShowExportModal(!showExportModal),
       style: {
         padding: "10px 20px",
         backgroundColor: "#10b981",
@@ -3539,7 +5438,65 @@ ${s3}
         fontSize: 13,
         fontWeight: 600
       }
-    }, "Exportar Excel"), /*#__PURE__*/React.createElement("button", {
+    }, "Exportar \u25BE", /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 9,
+        backgroundColor: "#f97316",
+        color: "#fff",
+        padding: "1px 5px",
+        borderRadius: 10,
+        fontWeight: 700,
+        marginLeft: 5,
+        verticalAlign: "middle"
+      }
+    }, "\u03B2")), showExportModal && /*#__PURE__*/React.createElement("div", {
+      style: {
+        position: "absolute",
+        top: "100%",
+        left: 0,
+        marginTop: 8,
+        backgroundColor: "#fff",
+        border: "1px solid #cbd5e1",
+        borderRadius: 6,
+        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+        minWidth: 200,
+        zIndex: 100
+      },
+      onClick: e => e.stopPropagation()
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        exportToExcel();
+        setShowExportModal(false);
+      },
+      style: {
+        display: "block",
+        width: "100%",
+        padding: "10px 16px",
+        border: "none",
+        backgroundColor: "transparent",
+        textAlign: "left",
+        cursor: "pointer",
+        fontSize: 13,
+        color: "#1e293b",
+        borderBottom: "1px solid #e2e8f0"
+      }
+    }, "\uD83D\uDCCA Excel (.xls)"), /*#__PURE__*/React.createElement("button", {
+      onClick: () => {
+        setShowExportModal(false);
+        setShowPDFDialog(true);
+      },
+      style: {
+        display: "block",
+        width: "100%",
+        padding: "10px 16px",
+        border: "none",
+        backgroundColor: "transparent",
+        textAlign: "left",
+        cursor: "pointer",
+        fontSize: 13,
+        color: "#1e293b"
+      }
+    }, "\uD83D\uDCC4 PDF (escolher se\xE7\xF5es)"))), /*#__PURE__*/React.createElement("button", {
       onClick: saveProposalJSON,
       style: {
         padding: "10px 20px",
@@ -3551,7 +5508,18 @@ ${s3}
         fontSize: 13,
         fontWeight: 600
       }
-    }, "Salvar Proposta"), /*#__PURE__*/React.createElement("button", {
+    }, "Salvar Proposta", /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 9,
+        backgroundColor: "#f97316",
+        color: "#fff",
+        padding: "1px 5px",
+        borderRadius: 10,
+        fontWeight: 700,
+        marginLeft: 5,
+        verticalAlign: "middle"
+      }
+    }, "\u03B2")), /*#__PURE__*/React.createElement("button", {
       onClick: loadProposalJSON,
       style: {
         padding: "10px 20px",
@@ -3577,6 +5545,17 @@ ${s3}
         setClientDate("");
         setTotalAmount(500000);
         setIsQualified(false);
+        setLiqTargets({
+          d1: 0,
+          d65: 0,
+          "1ano": 0,
+          "5anos": 0,
+          "5mais": 0
+        });
+        setCustomAssetLiq({});
+        setLiqOptIn(null);
+        setShowAdvisorForm(false);
+        setShowSubtotals(true);
       },
       style: {
         padding: "10px 20px",
@@ -3596,7 +5575,7 @@ ${s3}
   // ======================================================================
 
   const StepIndicator = () => {
-    const steps = ["Perfil", "Grupos", "Ativos", "Alocação", "Proposta"];
+    const steps = ["Perfil", "Grupos", "Liquidez", "Ativos", "Alocação", "Proposta"];
     return /*#__PURE__*/React.createElement("div", {
       style: {
         display: "flex",
@@ -3709,7 +5688,7 @@ ${s3}
       fontSize: 12,
       fontWeight: 500
     }
-  }, "Carregar Proposta")))), /*#__PURE__*/React.createElement(StepIndicator, null), currentStep === 0 && /*#__PURE__*/React.createElement(StepProfile, null), currentStep === 1 && /*#__PURE__*/React.createElement(StepGroupAllocation, null), currentStep === 2 && /*#__PURE__*/React.createElement(StepAssetSelection, null), currentStep === 3 && /*#__PURE__*/React.createElement(StepAllocationFineTuning, null), currentStep === 4 && /*#__PURE__*/React.createElement(StepFinalProposal, null));
+  }, "Carregar Proposta")))), /*#__PURE__*/React.createElement(StepIndicator, null), currentStep === 0 && /*#__PURE__*/React.createElement(StepProfile, null), currentStep === 1 && /*#__PURE__*/React.createElement(StepGroupAllocation, null), currentStep === 2 && /*#__PURE__*/React.createElement(StepLiquidez, null), currentStep === 3 && /*#__PURE__*/React.createElement(StepAssetSelection, null), currentStep === 4 && /*#__PURE__*/React.createElement(StepAllocationFineTuning, null), currentStep === 5 && /*#__PURE__*/React.createElement(StepFinalProposal, null));
 }
 
 // ========================================================================
